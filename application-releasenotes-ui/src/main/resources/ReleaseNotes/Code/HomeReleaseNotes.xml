@@ -77,7 +77,7 @@ $!xwiki.jsx.use("${topSpace}.Code.HomeReleaseNotes")
     &lt;form&gt;
       &lt;input type="hidden" name="action" value="addReleaseNotes"/&gt;
       &lt;input id="product" type="text" name="product" value="$defaultProduct" size="32"/&gt;
-      &lt;input id="version" type="text" name="version" value="Version e.g. 8.3-milestone-1..." size="32" class="withTip"/&gt;
+      &lt;input id="version" type="text" name="version" placeholder="Version e.g. 8.3-milestone-1..." size="32"/&gt;
       &lt;span class="buttonwrapper"&gt;
         &lt;input class="button" type="submit" value="Add Release Note"/&gt;
       &lt;/span&gt;
