@@ -48,11 +48,11 @@ $!xwiki.jsx.use("${topSpace}.Code.HomeCustomReport")
     &lt;option value="simple"&gt;Simple&lt;/option&gt;
     &lt;option value="list"&gt;List&lt;/option&gt;
   &lt;/select&gt;
-  &lt;input id="report-product" type="text" name="products" value="Products..." size="30" class="withTip"/&gt;
-  &lt;input id="report-version" type="text" name="versions" value="Versions..." size="30" class="withTip"/&gt;
-  &lt;input id="report-category" type="text" name="categories" value="Categories..." size="30" class="withTip"/&gt;
-  &lt;input id="report-audience" type="text" name="audience" value="Audience..." size="30" class="withTip"/&gt;
-  &lt;input id="report-importance" type="text" name="importance" value="Importance..." size="30" class="withTip"/&gt;
+  &lt;input id="report-product" type="text" name="products" placeholder="Products..." size="30"/&gt;
+  &lt;input id="report-version" type="text" name="versions" placeholder="Versions..." size="30"/&gt;
+  &lt;input id="report-category" type="text" name="categories" placeholder="Categories..." size="30"/&gt;
+  &lt;input id="report-audience" type="text" name="audience" placeholder="Audience..." size="30"/&gt;
+  &lt;input id="report-importance" type="text" name="importance" placeholder="Importance..." size="30"/&gt;
   &lt;br/&gt;
   &lt;input type="radio" name="containsScreenshots" value="true"&gt; With Screenshots
   &lt;input type="radio" name="containsScreenshots" value="false"&gt; Without Screenshots

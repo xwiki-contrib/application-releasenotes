@@ -56,7 +56,7 @@
       &lt;input type="hidden" name="template" value="${topSpace}.Code.Change.ChangeTemplate"/&gt;
       &lt;input type="hidden" name="type" value="Change"/&gt;
       &lt;input id="product" type="text" name="product" value="XWiki" size="16"/&gt;
-      &lt;input id="version" type="text" name="version" value="Product version..." size="16" class="withTip"/&gt;
+      &lt;input id="version" type="text" name="version" placeholder="Product version..." size="16"/&gt;
       &lt;span class="buttonwrapper"&gt;
         &lt;input class="button" type="submit" value="Add Release Change"/&gt;
       &lt;/span&gt;
