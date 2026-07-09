@@ -57,11 +57,11 @@
     ## Make sure we have existing entries, otherwise start at 1
     ## Handle the case of MySQL which uses "\" as an escape character and we need to handle that
     ## since that character is present in space references when there are dots in space names.
-    #set ($query = $services.query.xwql("from doc.object(${topSpace}.Code.EntryClass) as entries where doc.space LIKE :space escape '!'"))
+    #set ($query = $services.query.xwql("from doc.object(${topSpace}.Code.EntryClass) as entries where entries.type = 'Change' and doc.space LIKE :space escape '!'"))
     #set ($spaceLike = $versionSpaceReferenceString.replaceAll('([%_!])', '!$1').concat('.%'))
     #set ($query = $query.bindValue('space', $spaceLike))
     #if ($query.count() &gt; 0)
-      #set ($highestQuery = $services.query.xwql("from doc.object(${topSpace}.Code.EntryClass) as changes where doc.space like :space escape '!' order by doc.space desc"))
+      #set ($highestQuery = $services.query.xwql("from doc.object(${topSpace}.Code.EntryClass) as changes where changes.type = 'Change' and doc.space like :space escape '!' order by doc.space desc"))
       #set ($highestQuery = $highestQuery.bindValue('space', $spaceLike))
       #set ($highest = $highestQuery.setLimit(1).execute())
       #set ($currentNumber = $numbertool.toNumber($services.model.resolveDocument($highest[0]).parent.name.replaceFirst("^.*\D", "")).intValue())

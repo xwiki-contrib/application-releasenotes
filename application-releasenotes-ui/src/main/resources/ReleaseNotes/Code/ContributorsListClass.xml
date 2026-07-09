@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 -->
 
-<xwikidoc version="1.2" reference="ReleaseNotes.Code.EntryClass" locale="">
+<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsListClass" locale="">
   <web>ReleaseNotes.Code</web>
-  <name>EntryClass</name>
+  <name>ContributorsListClass</name>
   <language/>
   <defaultLanguage/>
   <translation>0</translation>
@@ -31,14 +31,14 @@
   <author>xwiki:XWiki.Admin</author>
   <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
   <version>1.1</version>
-  <title>Entry Class</title>
+  <title>Contributors List Class</title>
   <comment/>
   <minorEdit>false</minorEdit>
   <syntaxId>xwiki/2.1</syntaxId>
   <hidden>true</hidden>
   <content/>
   <class>
-    <name>ReleaseNotes.Code.EntryClass</name>
+    <name>ReleaseNotes.Code.ContributorsListClass</name>
     <customClass/>
     <customMapping/>
     <defaultViewSheet/>
@@ -46,81 +46,28 @@
     <defaultWeb/>
     <nameField/>
     <validationScript/>
-    <product>
-      <cache>0</cache>
-      <classname/>
+    <contributors>
+      <contenttype>PureText</contenttype>
       <customDisplay/>
       <disabled>0</disabled>
-      <displayType>input</displayType>
-      <idField/>
-      <multiSelect>0</multiSelect>
-      <name>product</name>
-      <number>9</number>
-      <picker>1</picker>
-      <prettyName>Product</prettyName>
-      <relationalStorage>1</relationalStorage>
-      <separator> </separator>
-      <separators/>
-      <size>30</size>
-      <sort>none</sort>
-      <sql/>
-      <unmodifiable>0</unmodifiable>
-      <validationMessage/>
-      <validationRegExp/>
-      <valueField/>
-      <classType>com.xpn.xwiki.objects.classes.DBListClass</classType>
-    </product>
-    <type>
-      <cache>0</cache>
-      <customDisplay/>
-      <disabled>0</disabled>
-      <displayType>select</displayType>
-      <multiSelect>0</multiSelect>
-      <name>type</name>
-      <number>3</number>
-      <picker>0</picker>
-      <prettyName>Type</prettyName>
-      <relationalStorage>0</relationalStorage>
-      <separator> </separator>
-      <separators>|, </separators>
-      <size>1</size>
-      <sort>none</sort>
-      <unmodifiable>0</unmodifiable>
-      <validationMessage/>
-      <validationRegExp/>
-      <values>Change|ContributorsList</values>
-      <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
-    </type>
-    <version>
-      <cache>0</cache>
-      <classname/>
-      <customDisplay/>
-      <disabled>0</disabled>
-      <displayType>input</displayType>
-      <idField/>
-      <multiSelect>0</multiSelect>
-      <name>version</name>
+      <editor>PureText</editor>
+      <name>contributors</name>
       <number>1</number>
-      <picker>1</picker>
-      <prettyName>Version</prettyName>
-      <relationalStorage>1</relationalStorage>
-      <separator> </separator>
-      <separators/>
-      <size>30</size>
-      <sort>none</sort>
-      <sql/>
+      <picker>0</picker>
+      <prettyName>Contributors</prettyName>
+      <rows>15</rows>
+      <size>40</size>
       <unmodifiable>0</unmodifiable>
       <validationMessage/>
       <validationRegExp/>
-      <valueField/>
-      <classType>com.xpn.xwiki.objects.classes.DBListClass</classType>
-    </version>
+      <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+    </contributors>
   </class>
   <object>
-    <name>ReleaseNotes.Code.EntryClass</name>
+    <name>ReleaseNotes.Code.ContributorsListClass</name>
     <number>0</number>
     <className>XWiki.ClassSheetBinding</className>
-    <guid>98ef6470-5895-4017-8cce-db1e23d7fabe</guid>
+    <guid>d3f4e5a6-7b82-4c93-8d04-2e3f4a5b6c72</guid>
     <class>
       <name>XWiki.ClassSheetBinding</name>
       <customClass/>
@@ -145,7 +92,7 @@
       </sheet>
     </class>
     <property>
-      <sheet>ReleaseNotes.Code.ChangesSheet</sheet>
+      <sheet>ReleaseNotes.Code.ContributorsListSheet</sheet>
     </property>
   </object>
 </xwikidoc>

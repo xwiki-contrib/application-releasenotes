@@ -1,0 +1,245 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.2" reference="ReleaseNotes.Code.ReleaseNotesContributorsMacro" locale="">
+  <web>ReleaseNotes.Code</web>
+  <name>ReleaseNotesContributorsMacro</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>ReleaseNotes.Code.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>Release Notes Contributors Macro</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <content/>
+  <object>
+    <name>ReleaseNotes.Code.ReleaseNotesContributorsMacro</name>
+    <number>0</number>
+    <className>XWiki.WikiMacroClass</className>
+    <guid>4b9b8a1e-2b0f-4d2a-9d1e-7c3f2a1b6c40</guid>
+    <class>
+      <name>XWiki.WikiMacroClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <code>
+        <disabled>0</disabled>
+        <name>code</name>
+        <number>9</number>
+        <prettyName>Macro code</prettyName>
+        <rows>20</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </code>
+      <contentDescription>
+        <disabled>0</disabled>
+        <name>contentDescription</name>
+        <number>8</number>
+        <prettyName>Content description (Not applicable for "No content" type)</prettyName>
+        <rows>5</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </contentDescription>
+      <contentType>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <multiSelect>0</multiSelect>
+        <name>contentType</name>
+        <number>7</number>
+        <prettyName>Macro content type</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator>|</separator>
+        <separators>|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>Optional|Mandatory|No content</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </contentType>
+      <defaultCategory>
+        <disabled>0</disabled>
+        <name>defaultCategory</name>
+        <number>4</number>
+        <prettyName>Default category</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </defaultCategory>
+      <description>
+        <disabled>0</disabled>
+        <name>description</name>
+        <number>3</number>
+        <prettyName>Macro description</prettyName>
+        <rows>5</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </description>
+      <id>
+        <disabled>0</disabled>
+        <name>id</name>
+        <number>1</number>
+        <prettyName>Macro id</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </id>
+      <name>
+        <disabled>0</disabled>
+        <name>name</name>
+        <number>2</number>
+        <prettyName>Macro name</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </name>
+      <supportsInlineMode>
+        <disabled>0</disabled>
+        <displayFormType>select</displayFormType>
+        <displayType>yesno</displayType>
+        <name>supportsInlineMode</name>
+        <number>5</number>
+        <prettyName>Supports inline mode</prettyName>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.BooleanClass</classType>
+      </supportsInlineMode>
+      <visibility>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <multiSelect>0</multiSelect>
+        <name>visibility</name>
+        <number>6</number>
+        <prettyName>Macro visibility</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator>|</separator>
+        <separators>|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>Current User|Current Wiki|Global</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </visibility>
+    </class>
+    <property>
+      <code>{{velocity}}
+#set ($topSpace = $doc.documentReference.extractFirstReference('SPACE').getName())
+## The contributors list is stored in a deterministic "ContributorsList" child page of the current
+## release note page, carrying an EntryClass envelope + a ContributorsListClass payload.
+#set ($rnSpaceReference = $doc.documentReference.lastSpaceReference)
+#set ($contributorsSpaceReference = $services.model.createSpaceReference('ContributorsList', $rnSpaceReference))
+#set ($contributorsReference = $services.model.createDocumentReference('WebHome', $contributorsSpaceReference))
+#set ($contributorsDoc = $xwiki.getDocument($contributorsReference))
+#set ($contributorsObject = $contributorsDoc.getObject("${topSpace}.Code.ContributorsListClass"))
+#set ($contributors = "$!contributorsObject.getValue('contributors')")
+#if ($contributors != '')
+The following people have contributed code to this release (sorted alphabetically):
+
+## Sort the contributor names alphabetically, ignoring case, before rendering them.
+#set ($sortedContributors = [])
+#foreach ($contributor in $contributors.split('[\r\n]+'))
+#set ($name = $contributor.trim())
+#if ($name != '')
+#set ($index = $sortedContributors.size())
+#foreach ($existing in $sortedContributors)
+#if ($name.compareToIgnoreCase($existing) &lt; 0)
+#set ($index = $foreach.index)
+#break
+#end
+#end
+#set ($discard = $sortedContributors.add($index, $name))
+#end
+#end
+#foreach ($contributor in $sortedContributors)
+* $services.rendering.escape($contributor, 'xwiki/2.1')
+#end
+#else
+{{warning}}The list of contributors has not been generated yet.{{/warning}}
+#end
+## Edit affordance: only for editors on a not-yet-released note, mirroring the changes macro.
+#set ($released = "$!doc.getValue('released')")
+#if ($hasEdit &amp;&amp; $released != '1')
+#set ($product = "$!doc.getValue('product')")
+#set ($version = "$!doc.getValue('version')")
+#if ($contributorsObject)
+## Present: a pencil edit link opening the ContributorsList page in edit mode.
+#set ($editText = $services.localization.render('edit'))
+#set ($iconHTML = $services.icon.renderHTML('pencil'))
+#set ($hrefAttribute = "$contributorsDoc.getURL('edit', ""editor=inline&amp;xredirect=$doc.getURL('view')"")")
+{{html clean="false"}}&lt;a class="edit_section" role="button" title="$editText" href="$hrefAttribute"&gt;${iconHTML}&lt;span class="sr-only"&gt;$editText&lt;/span&gt;&lt;/a&gt;{{/html}}
+#else
+## Absent: an "Add contributors" button opening the ContributorsList page in inline mode from the template.
+{{html clean="false"}}
+&lt;form action="$contributorsDoc.getURL('edit')" method="get"&gt;
+  &lt;input type="hidden" name="editor" value="inline"/&gt;
+  &lt;input type="hidden" name="xhidden" value="1"/&gt;
+  &lt;input type="hidden" name="template" value="${topSpace}.Code.ContributorsListTemplate"/&gt;
+  &lt;input type="hidden" name="product" value="$escapetool.xml($product)"/&gt;
+  &lt;input type="hidden" name="version" value="$escapetool.xml($version)"/&gt;
+  &lt;input type="hidden" name="type" value="ContributorsList"/&gt;
+  &lt;input type="hidden" name="xredirect" value="$escapetool.xml($doc.getURL('view'))"/&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;input class="button" type="submit" value="Add contributors"/&gt;
+  &lt;/span&gt;
+&lt;/form&gt;
+{{/html}}
+#end
+#end
+{{/velocity}}</code>
+    </property>
+    <property>
+      <contentDescription/>
+    </property>
+    <property>
+      <contentType>No content</contentType>
+    </property>
+    <property>
+      <defaultCategory>content</defaultCategory>
+    </property>
+    <property>
+      <description>Displays the list of contributors stored on the release note, or a warning when it has not been generated yet.</description>
+    </property>
+    <property>
+      <id>releasenotecontributors</id>
+    </property>
+    <property>
+      <name>Release Note Contributors</name>
+    </property>
+    <property>
+      <supportsInlineMode>0</supportsInlineMode>
+    </property>
+    <property>
+      <visibility>Current Wiki</visibility>
+    </property>
+  </object>
+</xwikidoc>
