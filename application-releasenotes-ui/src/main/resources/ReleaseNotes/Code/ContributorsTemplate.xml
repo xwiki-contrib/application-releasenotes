@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 -->
 
-<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsListTemplate" locale="">
+<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsTemplate" locale="">
   <web>ReleaseNotes.Code</web>
-  <name>ContributorsListTemplate</name>
+  <name>ContributorsTemplate</name>
   <language/>
   <defaultLanguage/>
   <translation>0</translation>
@@ -38,12 +38,12 @@
   <hidden>true</hidden>
   <content/>
   <object>
-    <name>ReleaseNotes.Code.ContributorsListTemplate</name>
+    <name>ReleaseNotes.Code.ContributorsTemplate</name>
     <number>0</number>
-    <className>ReleaseNotes.Code.ContributorsListClass</className>
+    <className>ReleaseNotes.Code.ContributorsClass</className>
     <guid>b1d2c3e4-5f60-4a71-8b92-0c1d2e3f4a50</guid>
     <class>
-      <name>ReleaseNotes.Code.ContributorsListClass</name>
+      <name>ReleaseNotes.Code.ContributorsClass</name>
       <customClass/>
       <customMapping/>
       <defaultViewSheet/>
@@ -73,7 +73,7 @@
     </property>
   </object>
   <object>
-    <name>ReleaseNotes.Code.ContributorsListTemplate</name>
+    <name>ReleaseNotes.Code.ContributorsTemplate</name>
     <number>0</number>
     <className>ReleaseNotes.Code.EntryClass</className>
     <guid>c2e3d4f5-6a71-4b82-9c03-1d2e3f4a5b61</guid>
@@ -128,7 +128,7 @@
         <unmodifiable>0</unmodifiable>
         <validationMessage/>
         <validationRegExp/>
-        <values>Change|ContributorsList</values>
+        <values>Change|Contributors</values>
         <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
       </type>
       <version>
@@ -160,7 +160,7 @@
       <product>XWiki</product>
     </property>
     <property>
-      <type>ContributorsList</type>
+      <type>Contributors</type>
     </property>
     <property>
       <version/>

@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 -->
 
-<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsListClass" locale="">
+<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsClass" locale="">
   <web>ReleaseNotes.Code</web>
-  <name>ContributorsListClass</name>
+  <name>ContributorsClass</name>
   <language/>
   <defaultLanguage/>
   <translation>0</translation>
@@ -38,7 +38,7 @@
   <hidden>true</hidden>
   <content/>
   <class>
-    <name>ReleaseNotes.Code.ContributorsListClass</name>
+    <name>ReleaseNotes.Code.ContributorsClass</name>
     <customClass/>
     <customMapping/>
     <defaultViewSheet/>
@@ -64,7 +64,7 @@
     </contributors>
   </class>
   <object>
-    <name>ReleaseNotes.Code.ContributorsListClass</name>
+    <name>ReleaseNotes.Code.ContributorsClass</name>
     <number>0</number>
     <className>XWiki.ClassSheetBinding</className>
     <guid>d3f4e5a6-7b82-4c93-8d04-2e3f4a5b6c72</guid>
@@ -92,7 +92,7 @@
       </sheet>
     </class>
     <property>
-      <sheet>ReleaseNotes.Code.ContributorsListSheet</sheet>
+      <sheet>ReleaseNotes.Code.ContributorsSheet</sheet>
     </property>
   </object>
 </xwikidoc>

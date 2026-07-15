@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 -->
 
-<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsListSheet" locale="">
+<xwikidoc version="1.2" reference="ReleaseNotes.Code.ContributorsSheet" locale="">
   <web>ReleaseNotes.Code</web>
-  <name>ContributorsListSheet</name>
+  <name>ContributorsSheet</name>
   <language/>
   <defaultLanguage/>
   <translation>0</translation>
@@ -39,7 +39,7 @@
   <content>{{velocity}}
 #set ($topSpace = $doc.documentReference.extractFirstReference('SPACE').getName())
 #set ($entryObject = $doc.getObject("${topSpace}.Code.EntryClass"))
-#set ($contributorsObject = $doc.getObject("${topSpace}.Code.ContributorsListClass"))
+#set ($contributorsObject = $doc.getObject("${topSpace}.Code.ContributorsClass"))
 #if ($xcontext.action == 'inline' || $xcontext.action == 'edit')
   #if ("$!request.product" != '')
     #set ($discard = $entryObject.set('product', $!request.product))

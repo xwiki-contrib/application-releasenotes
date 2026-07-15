@@ -43,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReleaseNotesIT
 {
     /**
-     * Builds a release note page (with the contributors macro) plus, optionally, its ContributorsList child entry,
-     * then asserts the macro shows a warning when the list is absent and renders the names when it is present.
+     * Builds a release note page (with the contributors macro) plus, optionally, its Contributors child entry, then
+     * asserts the macro shows a warning when the list is absent and renders the names when it is present.
      */
     @Test
     @Order(1)
@@ -63,15 +63,15 @@ class ReleaseNotesIT
         assertTrue(beforePage.getContent().contains("The list of contributors has not been generated yet."),
             "Expected the not-generated-yet warning before the contributors list exists.");
 
-        // Create the deterministic ContributorsList child entry with two names.
+        // Create the deterministic Contributors child entry with two names.
         DocumentReference contributorsEntry = new DocumentReference("xwiki",
-            List.of("ReleaseNotes", "Data", "TestProduct", "1.0", "ContributorsList"), "WebHome");
+            List.of("ReleaseNotes", "Data", "TestProduct", "1.0", "Contributors"), "WebHome");
         setup.rest().delete(contributorsEntry);
         setup.createPage(contributorsEntry, "", "Contributors");
         setup.addObject(contributorsEntry, "ReleaseNotes.Code.EntryClass",
-            "product", "TestProduct", "type", "ContributorsList", "version", "1.0");
+            "product", "TestProduct", "type", "Contributors", "version", "1.0");
         // Store the names unsorted and with mixed case to exercise the case-insensitive alphabetical ordering.
-        setup.addObject(contributorsEntry, "ReleaseNotes.Code.ContributorsListClass",
+        setup.addObject(contributorsEntry, "ReleaseNotes.Code.ContributorsClass",
             "contributors", "bob jones\nAlice Smith\nCarol Nguyen");
 
         // Now the macro renders the names, sorted alphabetically ignoring case, and drops the warning.
@@ -89,8 +89,8 @@ class ReleaseNotesIT
 
     /**
      * Exercises the aligned edit UX: the macro shows an "Add contributors" button when the list is absent, the button
-     * opens the separate ContributorsList page in inline edit mode, and saving there renders the names back on the
-     * release note and drops the warning.
+     * opens the separate Contributors page in inline edit mode, and saving there renders the names back on the release
+     * note and drops the warning.
      */
     @Test
     @Order(2)
@@ -102,7 +102,7 @@ class ReleaseNotesIT
             new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", "EditProduct", "1.0"), "WebHome");
         setup.rest().delete(releaseNote);
         DocumentReference contributorsEntry = new DocumentReference("xwiki",
-            List.of("ReleaseNotes", "Data", "EditProduct", "1.0", "ContributorsList"), "WebHome");
+            List.of("ReleaseNotes", "Data", "EditProduct", "1.0", "Contributors"), "WebHome");
         setup.rest().delete(contributorsEntry);
 
         setup.createPage(releaseNote, "= Credits =\n\n{{releasenotecontributors/}}", "RN Edit 1.0");
@@ -116,7 +116,7 @@ class ReleaseNotesIT
         WebElement addButton = setup.getDriver().findElementWithoutWaiting(
             By.cssSelector("input.button[value='Add contributors']"));
 
-        // Click "Add contributors": lands on the ContributorsList page in inline edit mode.
+        // Click "Add contributors": lands on the Contributors page in inline edit mode.
         addButton.click();
         WebElement textarea = setup.getDriver().findElement(By.cssSelector("textarea"));
         textarea.clear();
@@ -131,9 +131,9 @@ class ReleaseNotesIT
         assertFalse(content.contains("The list of contributors has not been generated yet."),
             "Warning must disappear once the contributors list has been saved.");
 
-        // The ContributorsList page created from the macro is a technical child page: it must be hidden.
+        // The Contributors page created from the macro is a technical child page: it must be hidden.
         Page savedEntry = setup.rest().get(contributorsEntry);
-        assertTrue(savedEntry.isHidden(), "The ContributorsList child page must be created as a hidden page.");
+        assertTrue(savedEntry.isHidden(), "The Contributors child page must be created as a hidden page.");
     }
 
     /**
@@ -153,14 +153,14 @@ class ReleaseNotesIT
         setup.addObject(releaseNote, "ReleaseNotes.Code.ReleaseNoteClass", "product", "EscProduct", "version", "1.0");
 
         DocumentReference contributorsEntry = new DocumentReference("xwiki",
-            List.of("ReleaseNotes", "Data", "EscProduct", "1.0", "ContributorsList"), "WebHome");
+            List.of("ReleaseNotes", "Data", "EscProduct", "1.0", "Contributors"), "WebHome");
         setup.rest().delete(contributorsEntry);
         setup.createPage(contributorsEntry, "", "Contributors");
         setup.addObject(contributorsEntry, "ReleaseNotes.Code.EntryClass",
-            "product", "EscProduct", "type", "ContributorsList", "version", "1.0");
+            "product", "EscProduct", "type", "Contributors", "version", "1.0");
         // A name carrying bold wiki syntax: if escaped, the asterisks survive in the rendered text; if interpreted,
         // the text would render as bold and the asterisks would be gone.
-        setup.addObject(contributorsEntry, "ReleaseNotes.Code.ContributorsListClass",
+        setup.addObject(contributorsEntry, "ReleaseNotes.Code.ContributorsClass",
             "contributors", "**Robert Tables**");
 
         String content = setup.gotoPage(releaseNote).getContent();
@@ -169,12 +169,12 @@ class ReleaseNotesIT
     }
 
     /**
-     * Adding the first change to a version that already has a ContributorsList entry must still number the new change
-     * Entry001 (regression guard: the ContributorsList entry must not be counted by the change-numbering query).
+     * Adding the first change to a version that already has a Contributors entry must still number the new change
+     * Entry001 (regression guard: the Contributors entry must not be counted by the change-numbering query).
      */
     @Test
     @Order(4)
-    void changeNumberingIgnoresContributorsList(TestUtils setup) throws Exception
+    void changeNumberingIgnoresContributors(TestUtils setup) throws Exception
     {
         setup.loginAsSuperAdmin();
 
@@ -185,13 +185,13 @@ class ReleaseNotesIT
         setup.addObject(releaseNote, "ReleaseNotes.Code.ReleaseNoteClass",
             "product", "NumProduct", "version", "1.0", "released", "0");
 
-        // A ContributorsList entry exists in the version space, but no change entry does yet.
+        // A Contributors entry exists in the version space, but no change entry does yet.
         DocumentReference contributorsEntry = new DocumentReference("xwiki",
-            List.of("ReleaseNotes", "Data", "NumProduct", "1.0", "ContributorsList"), "WebHome");
+            List.of("ReleaseNotes", "Data", "NumProduct", "1.0", "Contributors"), "WebHome");
         setup.rest().delete(contributorsEntry);
         setup.createPage(contributorsEntry, "", "Contributors");
         setup.addObject(contributorsEntry, "ReleaseNotes.Code.EntryClass",
-            "product", "NumProduct", "type", "ContributorsList", "version", "1.0");
+            "product", "NumProduct", "type", "Contributors", "version", "1.0");
 
         // Trigger "Add User Change": handleAddAction computes the next Entry name and redirects to its inline editor.
         setup.gotoPage(releaseNote, "view",
@@ -199,6 +199,6 @@ class ReleaseNotesIT
                 + "&audience=user");
         String currentUrl = setup.getDriver().getCurrentUrl();
         assertTrue(currentUrl.contains("Entry001"),
-            "The new change must be numbered Entry001 despite the ContributorsList entry, landed on: " + currentUrl);
+            "The new change must be numbered Entry001 despite the Contributors entry, landed on: " + currentUrl);
     }
 }

@@ -154,13 +154,13 @@
     <property>
       <code>{{velocity}}
 #set ($topSpace = $doc.documentReference.extractFirstReference('SPACE').getName())
-## The contributors list is stored in a deterministic "ContributorsList" child page of the current
-## release note page, carrying an EntryClass envelope + a ContributorsListClass payload.
+## The contributors list is stored in a deterministic "Contributors" child page of the current
+## release note page, carrying an EntryClass envelope + a ContributorsClass payload.
 #set ($rnSpaceReference = $doc.documentReference.lastSpaceReference)
-#set ($contributorsSpaceReference = $services.model.createSpaceReference('ContributorsList', $rnSpaceReference))
+#set ($contributorsSpaceReference = $services.model.createSpaceReference('Contributors', $rnSpaceReference))
 #set ($contributorsReference = $services.model.createDocumentReference('WebHome', $contributorsSpaceReference))
 #set ($contributorsDoc = $xwiki.getDocument($contributorsReference))
-#set ($contributorsObject = $contributorsDoc.getObject("${topSpace}.Code.ContributorsListClass"))
+#set ($contributorsObject = $contributorsDoc.getObject("${topSpace}.Code.ContributorsClass"))
 #set ($contributors = "$!contributorsObject.getValue('contributors')")
 #if ($contributors != '')
 The following people have contributed code to this release (sorted alphabetically):
@@ -192,21 +192,21 @@ The following people have contributed code to this release (sorted alphabeticall
 #set ($product = "$!doc.getValue('product')")
 #set ($version = "$!doc.getValue('version')")
 #if ($contributorsObject)
-## Present: a pencil edit link opening the ContributorsList page in edit mode.
+## Present: a pencil edit link opening the Contributors page in edit mode.
 #set ($editText = $services.localization.render('edit'))
 #set ($iconHTML = $services.icon.renderHTML('pencil'))
 #set ($hrefAttribute = "$contributorsDoc.getURL('edit', ""editor=inline&amp;xredirect=$doc.getURL('view')"")")
 {{html clean="false"}}&lt;a class="edit_section" role="button" title="$editText" href="$hrefAttribute"&gt;${iconHTML}&lt;span class="sr-only"&gt;$editText&lt;/span&gt;&lt;/a&gt;{{/html}}
 #else
-## Absent: an "Add contributors" button opening the ContributorsList page in inline mode from the template.
+## Absent: an "Add contributors" button opening the Contributors page in inline mode from the template.
 {{html clean="false"}}
 &lt;form action="$contributorsDoc.getURL('edit')" method="get"&gt;
   &lt;input type="hidden" name="editor" value="inline"/&gt;
   &lt;input type="hidden" name="xhidden" value="1"/&gt;
-  &lt;input type="hidden" name="template" value="${topSpace}.Code.ContributorsListTemplate"/&gt;
+  &lt;input type="hidden" name="template" value="${topSpace}.Code.ContributorsTemplate"/&gt;
   &lt;input type="hidden" name="product" value="$escapetool.xml($product)"/&gt;
   &lt;input type="hidden" name="version" value="$escapetool.xml($version)"/&gt;
-  &lt;input type="hidden" name="type" value="ContributorsList"/&gt;
+  &lt;input type="hidden" name="type" value="Contributors"/&gt;
   &lt;input type="hidden" name="xredirect" value="$escapetool.xml($doc.getURL('view'))"/&gt;
   &lt;span class="buttonwrapper"&gt;
     &lt;input class="button" type="submit" value="Add contributors"/&gt;

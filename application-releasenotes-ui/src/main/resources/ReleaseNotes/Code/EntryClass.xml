@@ -88,7 +88,7 @@
       <unmodifiable>0</unmodifiable>
       <validationMessage/>
       <validationRegExp/>
-      <values>Change|ContributorsList</values>
+      <values>Change|Contributors</values>
       <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
     </type>
     <version>
