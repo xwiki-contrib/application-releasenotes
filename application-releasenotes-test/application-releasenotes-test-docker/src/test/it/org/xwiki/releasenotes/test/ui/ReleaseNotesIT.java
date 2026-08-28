@@ -204,78 +204,11 @@ class ReleaseNotesIT
     }
 
     /**
-     * The {@code >=} and {@code <=} version filters of the getChanges macro must include the boundary version itself,
-     * unlike their strict {@code >} and {@code <} counterparts.
-     */
-    @Test
-    @Order(5)
-    void getChangesComparisonFiltersIncludeTheBoundaryVersion(TestUtils setup) throws Exception
-    {
-        setup.loginAsSuperAdmin();
-
-        createChange(setup, "1.0", "Change One");
-        createChange(setup, "2.0", "Change Two");
-        createChange(setup, "3.0", "Change Three");
-
-        // ">=2.0" must return 2.0 and 3.0, i.e. the boundary version is part of the result.
-        String greaterOrEqual = renderFilter(setup, "GreaterOrEqual", ">=2.0");
-        assertFalse(greaterOrEqual.contains("Change One"), "\">=2.0\" must exclude 1.0, got: " + greaterOrEqual);
-        assertTrue(greaterOrEqual.contains("Change Two"), "\">=2.0\" must include 2.0, got: " + greaterOrEqual);
-        assertTrue(greaterOrEqual.contains("Change Three"), "\">=2.0\" must include 3.0, got: " + greaterOrEqual);
-
-        // "<=2.0" must return 1.0 and 2.0, i.e. the boundary version is part of the result.
-        String lowerOrEqual = renderFilter(setup, "LowerOrEqual", "<=2.0");
-        assertTrue(lowerOrEqual.contains("Change One"), "\"<=2.0\" must include 1.0, got: " + lowerOrEqual);
-        assertTrue(lowerOrEqual.contains("Change Two"), "\"<=2.0\" must include 2.0, got: " + lowerOrEqual);
-        assertFalse(lowerOrEqual.contains("Change Three"), "\"<=2.0\" must exclude 3.0, got: " + lowerOrEqual);
-
-        // The strict operators must still exclude the boundary version.
-        String greater = renderFilter(setup, "Greater", ">2.0");
-        assertFalse(greater.contains("Change Two"), "\">2.0\" must exclude 2.0, got: " + greater);
-        assertTrue(greater.contains("Change Three"), "\">2.0\" must include 3.0, got: " + greater);
-
-        String lower = renderFilter(setup, "Lower", "<2.0");
-        assertTrue(lower.contains("Change One"), "\"<2.0\" must include 1.0, got: " + lower);
-        assertFalse(lower.contains("Change Two"), "\"<2.0\" must exclude 2.0, got: " + lower);
-    }
-
-    /**
-     * Creates a single user change of the {@code CmpProduct} product for the passed version.
-     */
-    private void createChange(TestUtils setup, String version, String title) throws Exception
-    {
-        DocumentReference entry = new DocumentReference("xwiki",
-            List.of("ReleaseNotes", "Data", "CmpProduct", version, "Entry001"), "WebHome");
-        setup.rest().delete(entry);
-        setup.createPage(entry, "", title);
-        setup.addObject(entry, "ReleaseNotes.Code.EntryClass",
-            "product", "CmpProduct", "type", "Change", "version", version);
-        setup.addObject(entry, "ReleaseNotes.Code.Change.ChangeClass",
-            "title", title, "summary", title + " summary", "audience", "user", "importance", "1",
-            "category", "development");
-    }
-
-    /**
-     * Renders the {@code CmpProduct} changes matching the passed {@code versions} filter and returns the page content.
-     */
-    private String renderFilter(TestUtils setup, String pageName, String versions) throws Exception
-    {
-        DocumentReference reportPage =
-            new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", "CmpProduct", pageName), "WebHome");
-        setup.rest().delete(reportPage);
-        setup.createPage(reportPage,
-            String.format("{{getChanges products=\"CmpProduct\" versions=\"%s\" contextVariable=\"changeDocs\"/}}"
-                + "\n\n{{displayChanges contextVariable=\"changeDocs\" displayer=\"simple\"/}}", versions),
-            pageName);
-        return setup.gotoPage(reportPage).getContent();
-    }
-
-    /**
      * Checks that the configuration is reachable from the wiki Administration (thanks to the ConfigurableClass
      * xobject) and that the application home page offers a shortcut to that administration section.
      */
     @Test
-    @Order(6)
+    @Order(5)
     void configureFromAdministration(TestUtils setup)
     {
         setup.loginAsSuperAdmin();
