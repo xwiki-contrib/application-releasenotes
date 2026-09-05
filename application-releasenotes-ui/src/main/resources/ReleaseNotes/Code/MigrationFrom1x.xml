@@ -37,6 +37,15 @@
   <syntaxId>xwiki/2.1</syntaxId>
   <hidden>true</hidden>
   <content>{{velocity}}
+## The migration converts every 1.x change document of the wiki and saves it, and the conversion cannot be undone:
+## it removes the 1.x object from the page it converts. Its query is not restricted to the ReleaseNotes space, so
+## administering the wiki is what it takes to run it. The check gates the listing as well as the conversion: a user
+## who may not run the migration has no use for the list of the pages it would touch, and hiding the action while
+## still answering the request that performs it would not keep that request from performing it.
+#set ($hasWikiAdmin = $services.security.authorization.hasAccess('admin', $doc.documentReference.wikiReference))
+#if (!$hasWikiAdmin)
+{{error}}{{translation key="releasenotes.migration.notAllowed"/}}{{/error}}
+#else
 ## Find all pages having a v1.x ReleaseNotes.Code.ChangesClass
 #set ($xwql = "from doc.object(ReleaseNotes.Code.ChangesClass) as changes")
 ## The migration writes to every 1.x change document, so it only runs on a request carrying a valid
@@ -78,6 +87,7 @@
 
 #if (!$migrate)
 [[{{translation key="releasenotes.migration.start"/}}&gt;&gt;||queryString="confirm=1&amp;form_token=$escapetool.url($services.csrf.token)"]]
+#end
 #end
 {{/velocity}}</content>
 </xwikidoc>

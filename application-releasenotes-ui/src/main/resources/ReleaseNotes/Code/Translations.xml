@@ -154,6 +154,7 @@ releasenotes.report.next=Next changes
 releasenotes.migration.pending=The following pages need to be migrated:
 releasenotes.migration.migrated=The following pages have been migrated:
 releasenotes.migration.start=Start Migration
+releasenotes.migration.notAllowed=Migrating the release changes to the 2.0 format rewrites every page holding one, across the whole wiki, and cannot be undone. Only a wiki administrator can run it.
 
 # Release note body, section by section. The audiences repeat the same English wording, but each section is a
 # sentence of its own and translating one must not decide the wording of the two others.
