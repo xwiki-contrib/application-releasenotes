@@ -182,6 +182,7 @@ releasenotes.changes.developer.miscellaneous=Miscellaneous
 releasenotes.changes.truncated=This release note has more changes than the ones displayed here. Raise the "limit" parameter of the "releasenotechanges" macro to display them all.
 releasenotes.changes.display.nochanges=No changes!
 releasenotes.changes.display.moreDetails=More details
+releasenotes.changes.migrationNotes.none=No backward compatibility or migration notes.
 
 # Contributors list of a release note
 
@@ -199,12 +200,30 @@ releasenotes.change.conventions.optionalTitle=When entering a Miscellaneous chan
 releasenotes.change.screenshots.placeholder=Select or upload screenshots and videos...
 releasenotes.change.view=View this change
 releasenotes.change.video.notSupported=Sorry, your browser doesn't support embedded videos.
+releasenotes.change.migrationNotes.heading=Backward Compatibility and Migration Notes
 
 # Creation of a release note entry
 
 releasenotes.entry.versionRequired=A version is required to create a new release note entry.
 releasenotes.entry.notReserved=Could not take a page for the new change. Please try again.
-releasenotes.entry.addFailed=The change could not be added. Please check the product and the version you asked for, and the release note configuration of this wiki.</content>
+releasenotes.entry.addFailed=The change could not be added. Please check the product and the version you asked for, and the release note configuration of this wiki.
+
+# Upgrade notes
+releasenotes.home.upgrade.heading=Upgrade Notes
+releasenotes.home.upgrade.description=List the backward compatibility and migration notes to go through when upgrading from one version to another.
+releasenotes.home.upgrade.link=Show the upgrade notes
+releasenotes.upgrade.description=Give the version you run and the version you upgrade to, to list the backward compatibility and migration notes of every released version in between, in the order they are released.
+releasenotes.upgrade.product.label=Product
+releasenotes.upgrade.from.label=Upgrading from
+releasenotes.upgrade.from.placeholder=e.g. 10.11.9
+releasenotes.upgrade.to.label=Upgrading to
+releasenotes.upgrade.to.placeholder=e.g. 11.10.3
+releasenotes.upgrade.submit=Show Upgrade Notes
+releasenotes.upgrade.invalidRange=The version to upgrade to must come after the version to upgrade from.
+releasenotes.upgrade.notReleased=The version {0} is not released yet, so its backward compatibility and migration notes are not shown.
+releasenotes.upgrade.none=No backward compatibility or migration notes between these versions.
+releasenotes.upgrade.truncated=There are more notes between these versions than the ones displayed here. Narrow the range of versions to display them all.
+</content>
   <object>
     <name>ReleaseNotes.Code.Translations</name>
     <number>0</number>

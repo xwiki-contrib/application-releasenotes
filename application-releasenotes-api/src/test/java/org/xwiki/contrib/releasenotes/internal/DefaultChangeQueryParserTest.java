@@ -146,6 +146,8 @@ class DefaultChangeQueryParserTest
         assertEquals(List.of(ANY), unrestricted.getCategories());
         assertEquals(List.of(ANY), unrestricted.getImportances());
         assertNull(unrestricted.getContainsScreenshots());
+        assertNull(unrestricted.getContainsMigrationNotes());
+        assertNull(unrestricted.getReleased());
         assertEquals(ChangeQuery.DEFAULT_LIMIT, unrestricted.getLimit());
         assertEquals(0, unrestricted.getOffset());
 
@@ -220,6 +222,25 @@ class DefaultChangeQueryParserTest
     void theScreenshotFilterAcceptsTheTwoWordsItIsWrittenWith(String written, Boolean expected)
     {
         assertEquals(expected, parse(ChangeQueryParser.CONTAINS_SCREENSHOTS, written).getContainsScreenshots());
+    }
+
+    /**
+     * The migration notes filter and the released filter are choices just like the screenshot filter, and accept
+     * the same two words.
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "true,  true",
+        "false, false",
+        "True,  ",
+        "yes,   ",
+        "'',    "
+    })
+    void theMigrationNotesAndReleasedFiltersAcceptTheTwoWordsTheyAreWrittenWith(String written, Boolean expected)
+    {
+        assertEquals(expected,
+            parse(ChangeQueryParser.CONTAINS_MIGRATION_NOTES, written).getContainsMigrationNotes());
+        assertEquals(expected, parse(ChangeQueryParser.RELEASED, written).getReleased());
     }
 
     /**

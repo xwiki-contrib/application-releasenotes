@@ -89,6 +89,8 @@ class DisplayChangesMacroPageTest extends PageTest
 
     private static final String SUMMARY = "What the first change brings";
 
+    private static final String MIGRATION_NOTES = "Delete the Solr cache before upgrading";
+
     /**
      * The translation key of the label of the link towards the page of a change, which is what a page test displays
      * in place of the label itself since it registers no translation bundle.
@@ -120,7 +122,7 @@ class DisplayChangesMacroPageTest extends PageTest
         this.componentManager.registerMockComponent(SkinExtension.class, "ssfx");
 
         loadPage(CHANGE_CLASS);
-        for (String displayer : List.of("Simple", "List", "Grid", "Flow")) {
+        for (String displayer : List.of("Simple", "List", "Grid", "Flow", "MigrationNotes")) {
             loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayer" + displayer));
         }
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayerVelocityMacros"));
@@ -351,6 +353,45 @@ class DisplayChangesMacroPageTest extends PageTest
             String.format("The \"%s\" displayer left the summary sharing its paragraph: %s", displayer, html));
     }
 
+    /**
+     * Someone reading migration notes is about to upgrade and needs to know both which change a note is about and
+     * what to do: the migration notes displayer gives the title of the change, linking to its page, and its notes.
+     */
+    @Test
+    void theMigrationNotesDisplayerDisplaysTheLinkedTitleAndTheNotes() throws Exception
+    {
+        DocumentReference change = createChange("Entry001", TITLE, SUMMARY, "", "", MIGRATION_NOTES);
+
+        Document html = render("displayer=\"migrationNotes\"", change);
+
+        assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
+        Elements links = html.select("li .rn-migration-change a");
+        assertEquals(1, links.size(), html.body().html());
+        assertEquals(TITLE, links.text());
+        assertTrue(links.attr("href").contains("Entry001"), links.attr("href"));
+        assertTrue(html.text().contains(MIGRATION_NOTES), html.text());
+        assertFalse(html.text().contains(SUMMARY), "Only the migration notes are displayed: " + html.text());
+    }
+
+    /**
+     * The migration notes displayer places the title of a change into a link label, which is wiki syntax, so the
+     * title is escaped there as well.
+     */
+    @Test
+    void theMigrationNotesDisplayerEscapesTheTitle() throws Exception
+    {
+        this.componentManager.registerComponent(ScriptService.class, "rendering",
+            new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
+        DocumentReference change =
+            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", SUMMARY, "", "", MIGRATION_NOTES);
+
+        Document html = render("displayer=\"migrationNotes\"", change);
+
+        assertTrue(html.select("b").isEmpty(),
+            "A macro in the change title must not be executed when the change is displayed: " + html.body().html());
+        assertTrue(html.text().contains("{{html}}"), "The title must still be displayed, as inert text: " + html.text());
+    }
+
     private Document render(String macroParameters, DocumentReference... changes) throws Exception
     {
         return render(macroParameters, "changeDocs", changes);
@@ -403,6 +444,12 @@ class DisplayChangesMacroPageTest extends PageTest
     private DocumentReference createChange(String name, String title, String summary, String description,
         String screenshots) throws Exception
     {
+        return createChange(name, title, summary, description, screenshots, "");
+    }
+
+    private DocumentReference createChange(String name, String title, String summary, String description,
+        String screenshots, String migrationNotes) throws Exception
+    {
         List<String> spaces = new ArrayList<>(VERSION_SPACE);
         spaces.add(name);
         XWikiDocument change = new XWikiDocument(new DocumentReference("xwiki", spaces, "WebHome"));
@@ -412,6 +459,7 @@ class DisplayChangesMacroPageTest extends PageTest
         changeObject.setLargeStringValue("summary", summary);
         changeObject.setLargeStringValue("description", description);
         changeObject.setStringValue("screenshots", screenshots);
+        changeObject.setLargeStringValue("migrationNotes", migrationNotes);
         this.xwiki.saveDocument(change, this.context);
 
         return change.getDocumentReference();

@@ -38,6 +38,8 @@ public class ChangeRepresentation
 
     private String description;
 
+    private String migrationNotes;
+
     private String audience;
 
     private String importance;
@@ -101,6 +103,25 @@ public class ChangeRepresentation
     public void setDescription(String description)
     {
         this.description = description;
+    }
+
+    /**
+     * @return what has to be done when upgrading to the version of the change, in wiki syntax, or {@code null} when
+     *         the change needs nothing of the kind
+     * @since 2.8
+     */
+    public String getMigrationNotes()
+    {
+        return this.migrationNotes;
+    }
+
+    /**
+     * @param migrationNotes see {@link #getMigrationNotes()}
+     * @since 2.8
+     */
+    public void setMigrationNotes(String migrationNotes)
+    {
+        this.migrationNotes = migrationNotes;
     }
 
     /**

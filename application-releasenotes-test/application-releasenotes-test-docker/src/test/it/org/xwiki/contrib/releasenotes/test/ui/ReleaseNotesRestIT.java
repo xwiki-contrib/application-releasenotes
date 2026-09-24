@@ -20,6 +20,7 @@
 package org.xwiki.contrib.releasenotes.test.ui;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
@@ -244,6 +245,7 @@ class ReleaseNotesRestIT
             getClass().getResourceAsStream("/screenshot.png"), true);
 
         change.setScreenshots(List.of("shot.png"));
+        change.setMigrationNotes("Clear the cache before upgrading.");
 
         JsonResponse illustrated = client.put(changePath("Entry001"), change);
 
@@ -258,6 +260,14 @@ class ReleaseNotesRestIT
 
         assertEquals("A change worth a screenshot", read.getTitle());
         assertEquals(List.of("shot.png"), read.getScreenshots());
+
+        assertEquals("Clear the cache before upgrading.", read.getMigrationNotes());
+
+        // The changes carrying migration notes are found by the database itself, and the change of a version that is
+        // not released yet is not a released change.
+        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?containsMigrationNotes=true")));
+        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?containsMigrationNotes=false")));
+        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=true")));
 
         // A replacement replaces: the summary this one leaves out is emptied rather than kept, which is what a
         // client asking for the whole change to be stored asked for.
@@ -280,6 +290,10 @@ class ReleaseNotesRestIT
         assertEquals("1", propertyValue(setup, UPDATED_RELEASE_NOTE, "ReleaseNotes.Code.ReleaseNoteClass",
             "released"));
 
+        // Once its version is released, the change is a released change.
+        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?released=true")));
+        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=false")));
+
         // The release note is read back at the URL it was replaced at, as the change was.
         ReleaseNoteRepresentation readNote = client.get(updatePath()).as(ReleaseNoteRepresentation.class);
 
@@ -295,6 +309,17 @@ class ReleaseNotesRestIT
         assertNotNull(noEntry.as(ErrorRepresentation.class).getMessage());
         assertEquals(404, client.put("/releasenotes/" + UPDATE_PRODUCT + "/9.9", note).getStatus());
         assertEquals(404, client.get("/releasenotes/" + UPDATE_PRODUCT + "/9.9").getStatus());
+    }
+
+    /**
+     * @return the entries of the changes the passed listing answered, in the order it answered them
+     */
+    private static List<String> entriesOf(JsonResponse listing) throws Exception
+    {
+        assertEquals(200, listing.getStatus(), listing.getBody());
+
+        return listing.as(ChangesRepresentation.class).getChanges().stream().map(ChangeRepresentation::getEntry)
+            .collect(Collectors.toList());
     }
 
     private static String changesPath()

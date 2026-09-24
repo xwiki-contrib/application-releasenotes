@@ -19,6 +19,7 @@
  */
 package org.xwiki.contrib.releasenotes.internal;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -51,9 +52,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,6 +75,18 @@ class ChangeSearcherTest
      */
     private static final String EXISTING_VERSIONS_STATEMENT =
         "select distinct note.version from Document doc, doc.object(ReleaseNotes.Code.ReleaseNoteClass) as note";
+
+    /**
+     * The statement the pages of the changes carrying migration notes are read with.
+     */
+    private static final String NOTED_CHANGES_STATEMENT = "select doc.fullName from Document doc, "
+        + "doc.object(ReleaseNotes.Code.Change.ChangeClass) as changes where length(changes.migrationNotes) > 0";
+
+    /**
+     * The statement the product and the version of the release notes marked released are read with.
+     */
+    private static final String RELEASED_NOTES_STATEMENT = "select distinct note.product, note.version from "
+        + "Document doc, doc.object(ReleaseNotes.Code.ReleaseNoteClass) as note where note.released = 1";
 
     private static final String CHANGE = "ReleaseNotes.Data.XWiki.8.3.Entry001.WebHome";
 
@@ -95,6 +110,12 @@ class ChangeSearcherTest
     @Mock
     private Query existingVersionsQuery;
 
+    @Mock
+    private Query notedChangesQuery;
+
+    @Mock
+    private Query releasedNotesQuery;
+
     @BeforeEach
     void setUp() throws Exception
     {
@@ -107,11 +128,18 @@ class ChangeSearcherTest
 
         when(this.queryManager.createQuery(anyString(), anyString())).thenAnswer(invocation -> {
             String statement = invocation.getArgument(0);
+            if (NOTED_CHANGES_STATEMENT.equals(statement)) {
+                return this.notedChangesQuery;
+            } else if (RELEASED_NOTES_STATEMENT.equals(statement)) {
+                return this.releasedNotesQuery;
+            }
             return statement.startsWith("select") ? this.existingVersionsQuery : this.query;
         });
         when(this.query.bindValue(anyString(), any())).thenReturn(this.query);
         when(this.query.execute()).thenReturn(List.of());
         when(this.existingVersionsQuery.execute()).thenReturn(List.of());
+        when(this.notedChangesQuery.execute()).thenReturn(List.of());
+        when(this.releasedNotesQuery.execute()).thenReturn(List.of());
     }
 
     /**
@@ -205,6 +233,159 @@ class ChangeSearcherTest
         verify(this.queryManager).createQuery(statement.capture(), anyString());
         assertTrue(statement.getValue().contains("changes.screenshots"), statement.getValue());
         assertEquals(expectedNegation, statement.getValue().contains("and not ("), statement.getValue());
+    }
+
+    /**
+     * The changes carrying migration notes are asked about the notes themselves, whose length is what tells a note
+     * from none whether the database gives an empty large string back as null or as the empty string.
+     */
+    @Test
+    void theChangesCarryingMigrationNotesAreAskedAboutTheirNotes() throws Exception
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setContainsMigrationNotes(true);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(searchStatementContaining("and length(changes.migrationNotes) > 0"),
+            anyString());
+        verify(this.queryManager, never()).createQuery(NOTED_CHANGES_STATEMENT, Query.XWQL);
+    }
+
+    /**
+     * The changes carrying no migration notes are the ones that are not among the changes carrying some, rather
+     * than the ones whose notes are empty: a change saved before its class had migration notes holds no such
+     * property at all, and a condition on the property would leave it out of both answers.
+     */
+    @Test
+    void theChangesCarryingNoMigrationNotesAreTheOthers() throws Exception
+    {
+        doReturn(List.of(CHANGE, "second")).when(this.notedChangesQuery).execute();
+        ChangeQuery query = new ChangeQuery();
+        query.setContainsMigrationNotes(false);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(searchStatementContaining("and doc.fullName not in (:noted1, :noted2)"),
+            anyString());
+        verify(this.query).bindValue("noted1", CHANGE);
+        verify(this.query).bindValue("noted2", "second");
+    }
+
+    /**
+     * The pages carrying migration notes are left out in lists of a bounded size, since some databases refuse an
+     * {@code in} list of a thousand elements or more.
+     */
+    @Test
+    void manyChangesCarryingMigrationNotesAreLeftOutInSeveralLists() throws Exception
+    {
+        List<String> notedNames = new ArrayList<>();
+
+        for (int index = 1; index <= 501; index++) {
+            notedNames.add("Change" + index);
+        }
+
+        doReturn(notedNames).when(this.notedChangesQuery).execute();
+        ChangeQuery query = new ChangeQuery();
+        query.setContainsMigrationNotes(false);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(searchStatementContaining(":noted500) and doc.fullName not in (:noted501)"),
+            anyString());
+        verify(this.query).bindValue("noted501", "Change501");
+    }
+
+    /**
+     * When no change carries migration notes, every change carries none, and the search is not restricted.
+     */
+    @Test
+    void theChangesCarryingNoMigrationNotesAreAllOfThemWhenNoneCarriesAny() throws Exception
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setContainsMigrationNotes(false);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(
+            argThat((String statement) -> statement.startsWith("from") && !statement.contains("not in")),
+            anyString());
+    }
+
+    /**
+     * A change is released when the release note of its product and of its version is: both are matched, since two
+     * products may have released the same version number.
+     */
+    @Test
+    void theReleasedChangesAreTheOnesOfAReleasedProductAndVersion() throws Exception
+    {
+        doReturn(List.<Object[]>of(new Object[] {"XWiki", "8.3"}, new Object[] {"Other", "1.0"}))
+            .when(this.releasedNotesQuery).execute();
+        ChangeQuery query = new ChangeQuery();
+        query.setReleased(true);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(searchStatementContaining(
+            "and ((entries.product = :releasedProduct1 and entries.version = :releasedVersion1) "
+                + "or (entries.product = :releasedProduct2 and entries.version = :releasedVersion2))"),
+            anyString());
+        verify(this.query).bindValue("releasedProduct1", "XWiki");
+        verify(this.query).bindValue("releasedVersion1", "8.3");
+        verify(this.query).bindValue("releasedProduct2", "Other");
+        verify(this.query).bindValue("releasedVersion2", "1.0");
+    }
+
+    /**
+     * The unreleased changes are all the ones that are not released, which include the changes of a version that
+     * has no release note at all.
+     */
+    @Test
+    void theUnreleasedChangesAreAllTheOthers() throws Exception
+    {
+        doReturn(List.<Object[]>of(new Object[] {"XWiki", "8.3"})).when(this.releasedNotesQuery).execute();
+        ChangeQuery query = new ChangeQuery();
+        query.setReleased(false);
+
+        this.searcher.search(query);
+
+        verify(this.queryManager).createQuery(searchStatementContaining(
+            "and not ((entries.product = :releasedProduct1 and entries.version = :releasedVersion1))"), anyString());
+    }
+
+    /**
+     * When no version is released, no change is released and every change is unreleased.
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "true,  true",
+        "false, false"
+    })
+    void noReleasedVersionMeansNoReleasedChange(boolean released, boolean expectedNothing) throws Exception
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setReleased(released);
+
+        this.searcher.search(query);
+
+        ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
+        verify(this.queryManager, times(2)).createQuery(statement.capture(), anyString());
+        String search = statement.getAllValues().get(1);
+        assertEquals(expectedNothing, search.contains("and 1 = 0"), search);
+        assertFalse(search.contains("releasedProduct"), search);
+    }
+
+    @Test
+    void aSearchThatCannotReadTheReleasedVersionsIsReported() throws Exception
+    {
+        when(this.releasedNotesQuery.execute()).thenThrow(new QueryException("Broken", null, null));
+        ChangeQuery query = new ChangeQuery();
+        query.setReleased(true);
+
+        ReleaseNotesException exception =
+            assertThrows(ReleaseNotesException.class, () -> this.searcher.search(query));
+
+        assertEquals("Failed to look up the released versions of this wiki.", exception.getMessage());
     }
 
     /**
@@ -323,5 +504,14 @@ class ChangeSearcherTest
         query.setVersions(List.of(filter));
 
         return query;
+    }
+
+    /**
+     * @param condition a part of the where clause
+     * @return a matcher of the statement of the search itself, and not of a lookup it runs first, holding it
+     */
+    private static String searchStatementContaining(String condition)
+    {
+        return argThat((String statement) -> statement.startsWith("from") && statement.contains(condition));
     }
 }

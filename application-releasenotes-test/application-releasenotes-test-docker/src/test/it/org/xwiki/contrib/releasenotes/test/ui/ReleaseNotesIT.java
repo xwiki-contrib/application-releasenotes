@@ -241,6 +241,8 @@ class ReleaseNotesIT
             ViewPage createdPage = setup.gotoPage(releaseNote);
             assertTrue(createdPage.getContent().contains("New and Noteworthy"),
                 "The content of the template must have been copied to the created release note.");
+            assertTrue(createdPage.getContent().contains("Backward Compatibility and Migration Notes"),
+                "The template must give a new release note a section for its migration notes.");
 
             // The title is written out at creation, so it displays whatever right the note's author holds.
             assertEquals("Release Notes for TplProduct 9.0", createdPage.getDocumentTitle(),
@@ -575,6 +577,33 @@ class ReleaseNotesIT
         assertFalse(content.contains("A ten change"), "Got: " + content);
         assertFalse(content.contains("Failed to execute"),
             "A filter matching no version must still produce a valid query, got: " + content);
+
+        // The upgrade notes list the migration notes of the versions an upgrade goes through, in the order the
+        // versions are released: 9.0 before 10.0, which the alphabetical order would swap.
+        content = upgradeNotesContent(setup, "8.0", "10.0");
+        assertTrue(content.contains("A nine change migration notes"), "Got: " + content);
+        assertTrue(content.contains("A ten change migration notes"), "Got: " + content);
+        assertTrue(content.indexOf("A nine change") < content.indexOf("A ten change"),
+            "The notes of 9.0 must come before the ones of 10.0, got: " + content);
+
+        // The version upgraded from is already installed, so its notes are not part of the upgrade.
+        content = upgradeNotesContent(setup, "9.0", "10.0");
+        assertFalse(content.contains("A nine change"), "Got: " + content);
+        assertTrue(content.contains("A ten change migration notes"), "Got: " + content);
+    }
+
+    /**
+     * @return the rendered content of the upgrade notes of {@link #VERSION_PRODUCT} between the passed versions
+     */
+    private String upgradeNotesContent(TestUtils setup, String from, String to)
+    {
+        Map<String, String> queryParameters = new LinkedHashMap<>();
+        queryParameters.put("product", VERSION_PRODUCT);
+        queryParameters.put("from", from);
+        queryParameters.put("to", to);
+        setup.gotoPage(new DocumentReference("xwiki", List.of("ReleaseNotes", "Code"), "UpgradeNotes"), "view",
+            queryParameters);
+        return new ViewPage().getContent();
     }
 
     /**
@@ -600,7 +629,7 @@ class ReleaseNotesIT
             "product", VERSION_PRODUCT, "type", "Change", "version", version);
         setup.addObject(entry, "ReleaseNotes.Code.Change.ChangeClass",
             "title", title, "summary", title + " summary", "audience", "user", "importance", "1",
-            "category", "development");
+            "category", "development", "migrationNotes", title + " migration notes");
     }
 
     /**

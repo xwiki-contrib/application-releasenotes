@@ -1,0 +1,225 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.6" reference="ReleaseNotes.Code.UpgradeNotes" locale="">
+  <web>ReleaseNotes.Code</web>
+  <name>UpgradeNotes</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>ReleaseNotes.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>Upgrade Notes</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <enforceRequiredRights>true</enforceRequiredRights>
+  <content>{{velocity output="false"}}
+## The product defaults to the one configured for the wiki, and the range of versions is read from the request, so
+## that a URL such as ?product=XWiki&amp;from=10.11.9&amp;to=11.10.3 can be shared to point someone at the notes of their
+## upgrade.
+#set ($product = $stringtool.trim("$!request.product"))
+#if ($product == '')
+  #set ($product = "$!services.releasenotes.getDefaultProduct()")
+#end
+#set ($fromVersion = $stringtool.trim("$!request.from"))
+#set ($toVersion = $stringtool.trim("$!request.to"))
+## Every version of the product that has a release note is one an upgrade may start from, whereas only the ones
+## marked released are versions an upgrade may reach: the notes of a version still in development may change before
+## it ships. Both lists are ordered the way the versions are released.
+#set ($allVersions = [])
+#set ($releasedVersions = [])
+#if ($product != '')
+  #foreach ($note in $services.releasenotes.getReleaseNotes($product))
+    #if ("$!note.version" != '')
+      #set ($discard = $allVersions.add($note.version))
+      #if ($note.released)
+        #set ($discard = $releasedVersions.add($note.version))
+      #end
+    #end
+  #end
+  #set ($allVersions = $services.releasenotes.sortVersions($allVersions))
+  #set ($releasedVersions = $services.releasenotes.sortVersions($releasedVersions))
+#end
+## A range can hold hundreds of versions, but only a few dozen notes. The notes are not paged, since they are read
+## in the order the versions are released and a page break would split that order: this bound only keeps a wide
+## range from loading every change of the wiki, and is reported when it is reached.
+#set ($upgradeNotesLimit = 500)
+{{/velocity}}
+
+{{velocity}}
+{{translation key="releasenotes.upgrade.description"/}}
+
+{{html clean="false"}}
+&lt;form class="form-inline" action="$escapetool.xml($doc.getURL('view'))"&gt;
+  &lt;div class="form-group"&gt;
+    &lt;label for="upgrade-product"&gt;$escapetool.xml($services.localization.render('releasenotes.upgrade.product.label'))&lt;/label&gt;
+    &lt;input id="upgrade-product" class="form-control" type="text" name="product" value="$escapetool.xml($product)"
+      size="20" required="required"/&gt;
+  &lt;/div&gt;
+  &lt;div class="form-group"&gt;
+    &lt;label for="upgrade-from"&gt;$escapetool.xml($services.localization.render('releasenotes.upgrade.from.label'))&lt;/label&gt;
+    &lt;input id="upgrade-from" class="form-control" type="text" name="from" value="$escapetool.xml($fromVersion)"
+      size="15" required="required" list="upgrade-from-versions"
+      placeholder="$escapetool.xml($services.localization.render('releasenotes.upgrade.from.placeholder'))"/&gt;
+    &lt;datalist id="upgrade-from-versions"&gt;
+#foreach ($version in $allVersions)
+      &lt;option value="$escapetool.xml($version)"&gt;&lt;/option&gt;
+#end
+    &lt;/datalist&gt;
+  &lt;/div&gt;
+  &lt;div class="form-group"&gt;
+    &lt;label for="upgrade-to"&gt;$escapetool.xml($services.localization.render('releasenotes.upgrade.to.label'))&lt;/label&gt;
+    &lt;input id="upgrade-to" class="form-control" type="text" name="to" value="$escapetool.xml($toVersion)"
+      size="15" required="required" list="upgrade-to-versions"
+      placeholder="$escapetool.xml($services.localization.render('releasenotes.upgrade.to.placeholder'))"/&gt;
+    &lt;datalist id="upgrade-to-versions"&gt;
+#foreach ($version in $releasedVersions)
+      &lt;option value="$escapetool.xml($version)"&gt;&lt;/option&gt;
+#end
+    &lt;/datalist&gt;
+  &lt;/div&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.upgrade.submit'))"/&gt;
+  &lt;/span&gt;
+&lt;/form&gt;
+{{/html}}
+
+#set ($rangeVersions = [])
+#if ($product != '' &amp;&amp; $fromVersion != '' &amp;&amp; $toVersion != '')
+  #if ($services.releasenotes.compareVersions($fromVersion, $toVersion) &gt;= 0)
+    (% class="box warningmessage" %)((({{translation key="releasenotes.upgrade.invalidRange"/}})))
+
+  #else
+    ## The notes of a version apply to the upgrades that reach it: the version upgraded from is left out, since it
+    ## is already installed, and the version upgraded to is kept.
+    #foreach ($version in $releasedVersions)
+      #if ($services.releasenotes.compareVersions($version, $fromVersion) &gt; 0 &amp;&amp; $services.releasenotes.compareVersions($version, $toVersion) &lt;= 0)
+        #set ($discard = $rangeVersions.add($version))
+      #end
+    #end
+    #if ($allVersions.contains($toVersion) &amp;&amp; !$releasedVersions.contains($toVersion))
+      #set ($notReleasedParameters = [$services.rendering.escape($toVersion, 'xwiki/2.1')])
+      (% class="box infomessage" %)((($services.localization.render('releasenotes.upgrade.notReleased', $notReleasedParameters))))
+
+    #end
+    #if ($rangeVersions.isEmpty())
+      (% class="box infomessage" %)((({{translation key="releasenotes.upgrade.none"/}})))
+
+    #end
+  #end
+#end
+## The versions are asked for exactly, and each value is placed into a macro parameter, which is re-parsed as wiki
+## syntax, so the list is emitted escaped.
+#set ($versionFilters = [])
+#foreach ($version in $rangeVersions)
+  #set ($discard = $versionFilters.add("=$version"))
+#end
+#set ($escapedProduct = $services.rendering.escape("=$product", 'xwiki/2.1'))
+#set ($escapedVersions = $services.rendering.escape($stringtool.join($versionFilters, ','), 'xwiki/2.1'))
+{{/velocity}}
+
+{{velocity}}
+#if (!$rangeVersions.isEmpty())
+{{getChanges limit="$upgradeNotesLimit" products="$escapedProduct" versions="$escapedVersions" containsMigrationNotes="true" contextVariable="upgradeNotes"/}}
+#end
+{{/velocity}}
+
+{{velocity}}
+#if (!$rangeVersions.isEmpty())
+  ## The notes are grouped by the version they were made in, and the versions are displayed in the order they are
+  ## released, which is the order an upgrade goes through them in. Within a version, the notes keep the order of the
+  ## search, the most important ones first.
+  #set ($notesByVersion = {})
+  #foreach ($noteName in $upgradeNotes)
+    #set ($noteVersion = "$!xwiki.getDocument($noteName).getObject('ReleaseNotes.Code.EntryClass').getValue('version')")
+    #if (!$notesByVersion.containsKey($noteVersion))
+      #set ($discard = $notesByVersion.put($noteVersion, []))
+    #end
+    #set ($discard = $notesByVersion.get($noteVersion).add($noteName))
+  #end
+  #if ($notesByVersion.isEmpty())
+    (% class="box infomessage" %)((({{translation key="releasenotes.upgrade.none"/}})))
+
+  #end
+  #foreach ($version in $rangeVersions)
+    #if ($notesByVersion.containsKey($version))
+      ## Each version is displayed by its own call of the displayChanges macro, which reads the changes from the
+      ## variable it is given the name of once this script has run, so each version is published under a name of its
+      ## own rather than under one reused variable, which would only hold the last version by then.
+      #setVariable("upgradeNotes${foreach.count}", $notesByVersion.get($version))
+      #set ($noteReleaseReference = $services.releasenotes.getReleaseNoteReference($product, $version))
+== [[$services.rendering.escape($version, 'xwiki/2.1')&gt;&gt;doc:$services.rendering.escape($services.model.serialize($noteReleaseReference, 'default'), 'xwiki/2.1')]] ==
+
+{{displayChanges displayer="migrationNotes" contextVariable="upgradeNotes${foreach.count}"/}}
+
+    #end
+  #end
+  #if ($upgradeNotesHasMore)
+(% class="box warningmessage" %)(((
+{{translation key="releasenotes.upgrade.truncated"/}}
+)))
+  #end
+#end
+{{/velocity}}</content>
+  <object>
+    <name>ReleaseNotes.Code.UpgradeNotes</name>
+    <number>0</number>
+    <className>XWiki.RequiredRightClass</className>
+    <guid>d489ecb8-7da2-49a0-b767-739232547812</guid>
+    <class>
+      <name>XWiki.RequiredRightClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <level>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <freeText>forbidden</freeText>
+        <largeStorage>0</largeStorage>
+        <multiSelect>0</multiSelect>
+        <name>level</name>
+        <number>1</number>
+        <prettyName>Level</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator> </separator>
+        <separators> ,|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>edit|script|wiki_admin|programming</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </level>
+    </class>
+    <property>
+      <level>script</level>
+    </property>
+  </object>
+</xwikidoc>

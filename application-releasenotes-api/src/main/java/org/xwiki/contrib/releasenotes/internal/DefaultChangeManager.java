@@ -78,6 +78,8 @@ public class DefaultChangeManager implements ChangeManager
 
     private static final String DESCRIPTION = "description";
 
+    private static final String MIGRATION_NOTES = "migrationNotes";
+
     private static final String AUDIENCE = "audience";
 
     private static final String IMPORTANCE = "importance";
@@ -155,23 +157,7 @@ public class DefaultChangeManager implements ChangeManager
 
             BaseObject changeObject = document.getXObject(ReleaseNotesReferences.CHANGE_CLASS, true, xcontext);
             changeObject.set(TITLE, title, xcontext);
-            // Only the values the change carries are set, so that the ones it leaves out keep the default the
-            // template gives them, which is what a template is for.
-            setIfNotNull(changeObject, SUMMARY, change.getSummary(), xcontext);
-            setIfNotNull(changeObject, DESCRIPTION, change.getDescription(), xcontext);
-            setIfNotNull(changeObject, CATEGORY, change.getCategory(), xcontext);
-
-            if (change.getAudience() != null) {
-                changeObject.set(AUDIENCE, change.getAudience().getStoredValue(), xcontext);
-            }
-
-            if (change.getImportance() != null) {
-                changeObject.set(IMPORTANCE, change.getImportance().getStoredValue(), xcontext);
-            }
-
-            if (change.getScreenshots() != null) {
-                changeObject.set(SCREENSHOTS, String.join(SCREENSHOT_SEPARATOR, change.getScreenshots()), xcontext);
-            }
+            fillNewChange(changeObject, change, xcontext);
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to fill the page [%s] of the new change.", document.getDocumentReference()), e);
@@ -180,6 +166,31 @@ public class DefaultChangeManager implements ChangeManager
         this.documentWriter.save(document, "New change");
 
         return document.getDocumentReference();
+    }
+
+    /**
+     * Writes the values of a new change on top of the ones its template gave it. Only the values the change carries
+     * are set, so that the ones it leaves out keep the default the template gives them, which is what a template is
+     * for.
+     */
+    private void fillNewChange(BaseObject changeObject, Change change, XWikiContext xcontext) throws XWikiException
+    {
+        setIfNotNull(changeObject, SUMMARY, change.getSummary(), xcontext);
+        setIfNotNull(changeObject, DESCRIPTION, change.getDescription(), xcontext);
+        setIfNotNull(changeObject, MIGRATION_NOTES, change.getMigrationNotes(), xcontext);
+        setIfNotNull(changeObject, CATEGORY, change.getCategory(), xcontext);
+
+        if (change.getAudience() != null) {
+            changeObject.set(AUDIENCE, change.getAudience().getStoredValue(), xcontext);
+        }
+
+        if (change.getImportance() != null) {
+            changeObject.set(IMPORTANCE, change.getImportance().getStoredValue(), xcontext);
+        }
+
+        if (change.getScreenshots() != null) {
+            changeObject.set(SCREENSHOTS, String.join(SCREENSHOT_SEPARATOR, change.getScreenshots()), xcontext);
+        }
     }
 
     @Override
@@ -210,6 +221,7 @@ public class DefaultChangeManager implements ChangeManager
             changeObject.set(TITLE, title, xcontext);
             changeObject.set(SUMMARY, StringUtils.defaultString(change.getSummary()), xcontext);
             changeObject.set(DESCRIPTION, StringUtils.defaultString(change.getDescription()), xcontext);
+            changeObject.set(MIGRATION_NOTES, StringUtils.defaultString(change.getMigrationNotes()), xcontext);
             changeObject.set(CATEGORY, StringUtils.defaultString(change.getCategory()), xcontext);
             changeObject.set(AUDIENCE,
                 change.getAudience() == null ? "" : change.getAudience().getStoredValue(), xcontext);
@@ -277,6 +289,7 @@ public class DefaultChangeManager implements ChangeManager
         change.setTitle(changeObject.getStringValue(TITLE));
         change.setSummary(changeObject.getLargeStringValue(SUMMARY));
         change.setDescription(changeObject.getLargeStringValue(DESCRIPTION));
+        change.setMigrationNotes(changeObject.getLargeStringValue(MIGRATION_NOTES));
         change.setAudience(Audience.fromStoredValue(changeObject.getStringValue(AUDIENCE)));
         change.setImportance(Importance.fromStoredValue(changeObject.getStringValue(IMPORTANCE)));
         change.setCategory(changeObject.getStringValue(CATEGORY));

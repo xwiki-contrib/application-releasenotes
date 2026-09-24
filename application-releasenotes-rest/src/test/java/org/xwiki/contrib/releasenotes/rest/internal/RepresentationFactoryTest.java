@@ -174,6 +174,7 @@ class RepresentationFactoryTest
         representation.setTitle("The title");
         representation.setSummary("The summary");
         representation.setDescription("The description");
+        representation.setMigrationNotes("Delete the Solr cache before upgrading.");
         representation.setAudience("administrator");
         representation.setImportance("high");
         representation.setCategory("Performance");
@@ -190,6 +191,7 @@ class RepresentationFactoryTest
         assertEquals("The title", change.getTitle());
         assertEquals("The summary", change.getSummary());
         assertEquals("The description", change.getDescription());
+        assertEquals("Delete the Solr cache before upgrading.", change.getMigrationNotes());
         assertEquals(Audience.ADMINISTRATOR, change.getAudience());
         assertEquals(Importance.HIGH, change.getImportance());
         assertEquals("Performance", change.getCategory());
@@ -248,6 +250,7 @@ class RepresentationFactoryTest
         change.setTitle("The title");
         change.setAudience(Audience.DEVELOPER);
         change.setImportance(Importance.MEDIUM);
+        change.setMigrationNotes("Delete the Solr cache before upgrading.");
 
         ChangeRepresentation representation = this.factory.toRepresentation(change, ENTRY);
 
@@ -256,6 +259,7 @@ class RepresentationFactoryTest
         assertEquals("The title", representation.getTitle());
         assertEquals("developer", representation.getAudience());
         assertEquals("medium", representation.getImportance());
+        assertEquals("Delete the Solr cache before upgrading.", representation.getMigrationNotes());
         assertEquals("ReleaseNotes.Data.XWiki.8\\.3.WebHome", representation.getReference());
     }
 

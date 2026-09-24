@@ -76,7 +76,9 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         setFilters(parameters, AUDIENCE, query::setAudiences, value -> StringUtils.lowerCase(value, Locale.ROOT));
         setFilters(parameters, CATEGORIES, query::setCategories, UnaryOperator.identity());
         setFilters(parameters, IMPORTANCE, query::setImportances, DefaultChangeQueryParser::parseImportance);
-        setContainsScreenshots(parameters, query);
+        setBoolean(parameters, CONTAINS_SCREENSHOTS, query::setContainsScreenshots);
+        setBoolean(parameters, CONTAINS_MIGRATION_NOTES, query::setContainsMigrationNotes);
+        setBoolean(parameters, RELEASED, query::setReleased);
 
         int limit = getNumber(parameters, LIMIT, ChangeQuery.DEFAULT_LIMIT);
         // A limit is a bound: a value that would remove it, or that would make the search return nothing at all, is
@@ -158,16 +160,16 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
     }
 
     /**
-     * Reads the screenshot filter, which is not a value to compare but a choice between the changes that are
-     * illustrated and the ones that are not, and which therefore only accepts the two words the pages of the
-     * application and the report form spell it with.
+     * Reads a filter that is not a value to compare but a choice between the changes that have a trait and the ones
+     * that do not, and which therefore only accepts the two words the pages of the application and the report form
+     * spell it with.
      */
-    private void setContainsScreenshots(Map<String, ?> parameters, ChangeQuery query)
+    private void setBoolean(Map<String, ?> parameters, String name, Consumer<Boolean> setter)
     {
-        String value = getString(parameters, CONTAINS_SCREENSHOTS);
+        String value = getString(parameters, name);
 
         if (Boolean.TRUE.toString().equals(value) || Boolean.FALSE.toString().equals(value)) {
-            query.setContainsScreenshots(Boolean.valueOf(value));
+            setter.accept(Boolean.valueOf(value));
         }
     }
 

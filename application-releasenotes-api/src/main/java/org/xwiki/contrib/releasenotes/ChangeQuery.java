@@ -62,6 +62,10 @@ public class ChangeQuery
 
     private Boolean containsScreenshots;
 
+    private Boolean containsMigrationNotes;
+
+    private Boolean released;
+
     private int limit = DEFAULT_LIMIT;
 
     private int offset;
@@ -162,6 +166,47 @@ public class ChangeQuery
     public void setContainsScreenshots(Boolean containsScreenshots)
     {
         this.containsScreenshots = containsScreenshots;
+    }
+
+    /**
+     * @return {@code true} to return only the changes carrying backward compatibility and migration notes,
+     *         {@code false} to return only the ones carrying none, and {@code null} to return both
+     * @since 2.8
+     */
+    public Boolean getContainsMigrationNotes()
+    {
+        return this.containsMigrationNotes;
+    }
+
+    /**
+     * @param containsMigrationNotes whether the changes carry migration notes, or {@code null} to not ask
+     * @since 2.8
+     */
+    public void setContainsMigrationNotes(Boolean containsMigrationNotes)
+    {
+        this.containsMigrationNotes = containsMigrationNotes;
+    }
+
+    /**
+     * A change is released when the release note of its product and of its version is marked released. A change
+     * whose version has no release note is not released, since nothing says that version ever shipped.
+     *
+     * @return {@code true} to return only the released changes, {@code false} to return only the ones that are not,
+     *         and {@code null} to return both
+     * @since 2.8
+     */
+    public Boolean getReleased()
+    {
+        return this.released;
+    }
+
+    /**
+     * @param released whether the changes are released, or {@code null} to not ask
+     * @since 2.8
+     */
+    public void setReleased(Boolean released)
+    {
+        this.released = released;
     }
 
     /**

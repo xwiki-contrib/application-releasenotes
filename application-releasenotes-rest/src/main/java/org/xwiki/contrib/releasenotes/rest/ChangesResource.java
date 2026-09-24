@@ -67,6 +67,12 @@ public interface ChangesResource
      *            {@code high} or with the numbers they are stored as, or {@code null} to keep them all
      * @param containsScreenshots {@code true} to keep only the changes illustrated by a screenshot or a video,
      *            {@code false} to keep only the ones illustrated by neither, and {@code null} to keep both
+     * @param containsMigrationNotes {@code true} to keep only the changes carrying backward compatibility and
+     *            migration notes, {@code false} to keep only the ones carrying none, and {@code null} to keep both
+     * @param released {@code true} to keep only the changes of the versions marked released, {@code false} to keep
+     *            only the ones of the versions that are not, and {@code null} to keep both. It matters when
+     *            {@code aggregated} is set, since the milestones and the release candidates of a version are released
+     *            one by one
      * @param aggregated whether to also return the changes of the milestones and of the release candidates of the
      *            version, the way its release note displays them
      * @param limit how many changes to return at most, 100 by default
@@ -80,6 +86,7 @@ public interface ChangesResource
         @PathParam("version") String version, @QueryParam("audience") String audience,
         @QueryParam("category") String category, @QueryParam("importance") String importance,
         @QueryParam("containsScreenshots") String containsScreenshots,
+        @QueryParam("containsMigrationNotes") String containsMigrationNotes, @QueryParam("released") String released,
         @QueryParam("aggregated") @DefaultValue("false") boolean aggregated, @QueryParam("limit") String limit,
         @QueryParam("offset") String offset) throws ReleaseNotesException;
 

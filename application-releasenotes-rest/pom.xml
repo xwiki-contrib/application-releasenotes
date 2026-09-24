@@ -38,7 +38,7 @@
     <xwiki.extension.category>api</xwiki.extension.category>
     <!-- The instructions that are not covered are the setters and the constructors the representations carry for
          the JSON reader of a client, which the endpoints themselves never call. -->
-    <xwiki.jacoco.instructionRatio>0.97</xwiki.jacoco.instructionRatio>
+    <xwiki.jacoco.instructionRatio>0.98</xwiki.jacoco.instructionRatio>
   </properties>
   <dependencies>
     <!-- The Java API the endpoints expose. -->

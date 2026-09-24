@@ -41,9 +41,10 @@ import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet} in edit mode.
+ * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet}.
  *
  * @version $Id$
  */
@@ -94,7 +95,7 @@ class ChangeSheetPageTest extends PageTest
         Document html = renderChangeInEditMode();
 
         Elements labels = html.select("dt label");
-        assertEquals(9, labels.size(), "Expected a label for each of the nine edited fields.");
+        assertEquals(10, labels.size(), "Expected a label for each of the ten edited fields.");
         for (Element label : labels) {
             String target = label.attr("for");
             assertFalse(target.isEmpty(), "The '" + label.text() + "' label is bound to no field.");
@@ -137,7 +138,8 @@ class ChangeSheetPageTest extends PageTest
             "ReleaseNotes.Code.Change.ChangeClass_importance",
             "ReleaseNotes.Code.Change.ChangeClass_summary",
             "ReleaseNotes.Code.Change.ChangeClass_screenshots",
-            "ReleaseNotes.Code.Change.ChangeClass_description"),
+            "ReleaseNotes.Code.Change.ChangeClass_description",
+            "ReleaseNotes.Code.Change.ChangeClass_migrationNotes"),
             renderChangeInEditMode().select("dt label").eachText());
     }
 
@@ -156,7 +158,53 @@ class ChangeSheetPageTest extends PageTest
             renderChangeInEditMode().select("ul li").eachText());
     }
 
+    /**
+     * The migration notes of a change are what someone upgrading to its version has to act on, so its page displays
+     * them under a heading of their own, telling them apart from the description.
+     */
+    @Test
+    void theMigrationNotesAreDisplayedUnderTheirOwnHeading() throws Exception
+    {
+        Document html = renderChangeInViewMode("Delete the Solr cache before upgrading.");
+
+        assertEquals(List.of("releasenotes.change.migrationNotes.heading"), html.select("h1").eachText());
+        assertTrue(html.text().contains("Delete the Solr cache before upgrading."), html.text());
+    }
+
+    /**
+     * Most changes need no migration, and their page gets no empty section for it.
+     */
+    @Test
+    void aChangeNeedingNoMigrationHasNoMigrationNotesHeading() throws Exception
+    {
+        Document html = renderChangeInViewMode("");
+
+        assertTrue(html.select("h1").isEmpty(), html.body().html());
+    }
+
+    private Document renderChangeInViewMode(String migrationNotes) throws Exception
+    {
+        XWikiDocument change = createChange();
+        change.getXObject(CHANGE_CLASS).setLargeStringValue("summary", "The summary");
+        change.getXObject(CHANGE_CLASS).setLargeStringValue("migrationNotes", migrationNotes);
+        this.xwiki.saveDocument(change, this.context);
+        this.context.setDoc(change);
+        this.context.setAction("view");
+
+        return renderHTMLPage(change);
+    }
+
     private Document renderChangeInEditMode() throws Exception
+    {
+        XWikiDocument change = createChange();
+        this.xwiki.saveDocument(change, this.context);
+        this.context.setDoc(change);
+        this.context.setAction("edit");
+
+        return renderHTMLPage(change);
+    }
+
+    private XWikiDocument createChange() throws Exception
     {
         XWikiDocument change = new XWikiDocument(CHANGE);
         change.newXObject(ENTRY_CLASS, this.context);
@@ -164,11 +212,8 @@ class ChangeSheetPageTest extends PageTest
         // The sheet is included rather than applied so that the change stays the current document, which is what the
         // sheet mechanism does and what the sheet relies on to find its objects.
         change.setContent("{{include reference=\"ReleaseNotes.Code.Change.ChangeSheet\" context=\"current\"/}}");
-        this.xwiki.saveDocument(change, this.context);
-        this.context.setDoc(change);
-        this.context.setAction("edit");
 
-        return renderHTMLPage(change);
+        return change;
     }
 
     /**

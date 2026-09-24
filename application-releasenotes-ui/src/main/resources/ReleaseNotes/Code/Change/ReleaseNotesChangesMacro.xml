@@ -159,6 +159,10 @@
 #set ($exclusions = "$!wikimacro.parameters.exclusions")
 #set ($exclusions = $exclusions.split('\s*,\s*'))
 #set ($changesLimit = "$!wikimacro.parameters.limit")
+## With migrationNotes="true", the macro displays the backward compatibility and migration notes of the release note
+## instead of its changes. Each block below displaying the changes is guarded by this flag, since a block cannot keep
+## the blocks after it from running.
+#set ($migrationNotesOnly = "$!wikimacro.parameters.migrationNotes" == 'true')
 
 #macro (removeExcludedChanges $changes)
   #set ($discard = $changes.removeAll($exclusions))
@@ -171,6 +175,17 @@
 (% class="box warningmessage" %)(((
 {{translation key="releasenotes.changes.truncated"/}}
 )))
+  #end
+#end
+
+## Displays the migration notes of one audience, under the heading of that audience, and nothing when it has none.
+#macro (displayMigrationNotesSection $audienceKey $changes $variableName $hasMore)
+  #if ($changes.size() &gt; 0)
+== {{translation key="releasenotes.changes.${audienceKey}.heading"/}} ==
+
+{{displayChanges displayer="migrationNotes" displayEditLink="$displayEditLink" contextVariable="$variableName"/}}
+
+    #displayTruncationWarning($hasMore false)
   #end
 #end
 {{/velocity}}
@@ -194,6 +209,7 @@
 ## Decide whether or not display edit links for changes: only display them when the current user has edit rights on
 ## the current page
 #set ($displayEditLink = $hasEdit)
+#if (!$migrationNotesOnly)
 == {{translation key="releasenotes.changes.user.heading"/}} ==
 ## Handle the action only under the same condition that shows its button: the current user can edit the note and
 ## the note is not released. The button being hidden otherwise is not by itself what keeps the action from running.
@@ -215,17 +231,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($userChanges)
 #removeExcludedChanges($userMiscChanges)
 #if ($userChanges.size() == 0)
@@ -263,17 +285,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($adminChanges)
 #removeExcludedChanges($adminMiscChanges)
 #if ($adminChanges.size() == 0)
@@ -311,17 +339,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 {{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($devChanges)
 #removeExcludedChanges($devMiscChanges)
 #if ($devChanges.size() == 0)
@@ -339,7 +373,34 @@
     {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="devMiscChanges"/}}
   #end
 #end
-#displayTruncationWarning($devChangesHasMore, $devMiscChangesHasMore)</code>
+#displayTruncationWarning($devChangesHasMore, $devMiscChangesHasMore)
+#end
+{{/velocity}}
+
+{{velocity}}
+#if ($migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsMigrationNotes="true" contextVariable="userMigrationNotes"/}}
+
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsMigrationNotes="true" contextVariable="adminMigrationNotes"/}}
+
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" containsMigrationNotes="true" contextVariable="developerMigrationNotes"/}}
+#end
+{{/velocity}}
+
+{{velocity}}
+#if ($migrationNotesOnly)
+  #removeExcludedChanges($userMigrationNotes)
+  #removeExcludedChanges($adminMigrationNotes)
+  #removeExcludedChanges($developerMigrationNotes)
+  #if ($userMigrationNotes.isEmpty() &amp;&amp; $adminMigrationNotes.isEmpty() &amp;&amp; $developerMigrationNotes.isEmpty())
+    {{translation key="releasenotes.changes.migrationNotes.none"/}}
+  #else
+    #displayMigrationNotesSection('user' $userMigrationNotes 'userMigrationNotes' $userMigrationNotesHasMore)
+    #displayMigrationNotesSection('admin' $adminMigrationNotes 'adminMigrationNotes' $adminMigrationNotesHasMore)
+    #displayMigrationNotesSection('developer' $developerMigrationNotes 'developerMigrationNotes' $developerMigrationNotesHasMore)
+  #end
+#end
+{{/velocity}}</code>
     </property>
     <property>
       <contentDescription/>
@@ -517,6 +578,84 @@
     </property>
     <property>
       <name>limit</name>
+    </property>
+    <property>
+      <type/>
+    </property>
+  </object>
+  <object>
+    <name>ReleaseNotes.Code.Change.ReleaseNotesChangesMacro</name>
+    <number>2</number>
+    <className>XWiki.WikiMacroParameterClass</className>
+    <guid>caf1d354-a1d7-405f-972b-f71a8837d7f5</guid>
+    <class>
+      <name>XWiki.WikiMacroParameterClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <defaultValue>
+        <disabled>0</disabled>
+        <name>defaultValue</name>
+        <number>4</number>
+        <prettyName>Parameter default value</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </defaultValue>
+      <description>
+        <disabled>0</disabled>
+        <name>description</name>
+        <number>2</number>
+        <prettyName>Parameter description</prettyName>
+        <rows>5</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </description>
+      <mandatory>
+        <disabled>0</disabled>
+        <displayFormType>select</displayFormType>
+        <displayType>yesno</displayType>
+        <name>mandatory</name>
+        <number>3</number>
+        <prettyName>Parameter mandatory</prettyName>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.BooleanClass</classType>
+      </mandatory>
+      <name>
+        <disabled>0</disabled>
+        <name>name</name>
+        <number>1</number>
+        <prettyName>Parameter name</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </name>
+      <type>
+        <disabled>0</disabled>
+        <name>type</name>
+        <number>5</number>
+        <prettyName>Parameter type</prettyName>
+        <size>60</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </type>
+    </class>
+    <property>
+      <defaultValue>false</defaultValue>
+    </property>
+    <property>
+      <description>"true" to display the backward compatibility and migration notes of the release note, grouped by audience, instead of its changes.</description>
+    </property>
+    <property>
+      <mandatory>0</mandatory>
+    </property>
+    <property>
+      <name>migrationNotes</name>
     </property>
     <property>
       <type/>

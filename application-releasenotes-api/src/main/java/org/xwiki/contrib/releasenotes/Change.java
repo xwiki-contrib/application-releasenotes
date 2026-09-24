@@ -48,6 +48,8 @@ public class Change
 
     private String description;
 
+    private String migrationNotes;
+
     private Audience audience;
 
     private Importance importance;
@@ -144,6 +146,28 @@ public class Change
     public void setDescription(String description)
     {
         this.description = description;
+    }
+
+    /**
+     * @return what has to be done when upgrading to the version of the change, because the change breaks backward
+     *         compatibility or needs a migration step, or {@code null} when it needs nothing of the kind
+     * @since 2.8
+     */
+    public String getMigrationNotes()
+    {
+        return this.migrationNotes;
+    }
+
+    /**
+     * @param migrationNotes see {@link #getMigrationNotes()}
+     * @since 2.8
+     */
+    @PropertyDescription("What has to be done when upgrading to the version of the change, when the change breaks "
+        + "backward compatibility or needs a migration step, in wiki syntax. It is displayed in the backward "
+        + "compatibility and migration notes of the release note and of the upgrade notes.")
+    public void setMigrationNotes(String migrationNotes)
+    {
+        this.migrationNotes = migrationNotes;
     }
 
     /**

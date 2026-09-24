@@ -79,8 +79,8 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
 
     @Override
     public ChangesRepresentation getChanges(String wikiName, String product, String version, String audience,
-        String category, String importance, String containsScreenshots, boolean aggregated, String limit,
-        String offset) throws ReleaseNotesException
+        String category, String importance, String containsScreenshots, String containsMigrationNotes,
+        String released, boolean aggregated, String limit, String offset) throws ReleaseNotesException
     {
         return inWiki(wikiName, () -> {
             if (StringUtils.isBlank(product) || StringUtils.isBlank(version)) {
@@ -92,6 +92,8 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
             parameters.put(ChangeQueryParser.CATEGORIES, category);
             parameters.put(ChangeQueryParser.IMPORTANCE, importance);
             parameters.put(ChangeQueryParser.CONTAINS_SCREENSHOTS, containsScreenshots);
+            parameters.put(ChangeQueryParser.CONTAINS_MIGRATION_NOTES, containsMigrationNotes);
+            parameters.put(ChangeQueryParser.RELEASED, released);
             parameters.put(ChangeQueryParser.LIMIT, limit);
             parameters.put(ChangeQueryParser.OFFSET, offset);
             // The product and the version are the release note of the URL, and not something a client filters: the

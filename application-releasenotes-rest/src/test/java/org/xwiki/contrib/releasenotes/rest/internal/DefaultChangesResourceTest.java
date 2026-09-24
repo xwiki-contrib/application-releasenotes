@@ -147,8 +147,8 @@ class DefaultChangesResourceTest
         when(this.changeManager.getChange(ENTRY)).thenReturn(change());
 
         ChangesRepresentation representation =
-            this.resource.getChanges("xwiki", PRODUCT, VERSION, "user", "Performance", "high", "true", false, "10",
-                "20");
+            this.resource.getChanges("xwiki", PRODUCT, VERSION, "user", "Performance", "high", "true", "false",
+                "true", false, "10", "20");
 
         Map<String, ?> parameters = capturedParameters();
 
@@ -158,6 +158,8 @@ class DefaultChangesResourceTest
         assertEquals("Performance", parameters.get(ChangeQueryParser.CATEGORIES));
         assertEquals("high", parameters.get(ChangeQueryParser.IMPORTANCE));
         assertEquals("true", parameters.get(ChangeQueryParser.CONTAINS_SCREENSHOTS));
+        assertEquals("false", parameters.get(ChangeQueryParser.CONTAINS_MIGRATION_NOTES));
+        assertEquals("true", parameters.get(ChangeQueryParser.RELEASED));
         assertEquals("10", parameters.get(ChangeQueryParser.LIMIT));
         assertEquals("20", parameters.get(ChangeQueryParser.OFFSET));
 
@@ -178,7 +180,7 @@ class DefaultChangesResourceTest
         when(this.releaseNoteManager.getAggregatedVersions(RELEASE_NOTE))
             .thenReturn(List.of("8.3", "8.3-milestone%", "8.3-rc%"));
 
-        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, true, null, null);
+        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, null, null, true, null, null);
 
         assertEquals("8.3,8.3-milestone%,8.3-rc%", capturedParameters().get(ChangeQueryParser.VERSIONS));
     }
@@ -186,11 +188,13 @@ class DefaultChangesResourceTest
     @Test
     void aFilterThatIsNotAskedForIsNotPassedOn() throws Exception
     {
-        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, false, null, null);
+        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, null, null, false, null, null);
 
         Map<String, ?> parameters = capturedParameters();
 
         assertNull(parameters.get(ChangeQueryParser.AUDIENCE));
+        assertNull(parameters.get(ChangeQueryParser.CONTAINS_MIGRATION_NOTES));
+        assertNull(parameters.get(ChangeQueryParser.RELEASED));
         assertNull(parameters.get(ChangeQueryParser.LIMIT));
     }
 
@@ -198,7 +202,7 @@ class DefaultChangesResourceTest
     void theChangesOfAReleaseNoteThatNamesNoProductAreRefused()
     {
         WebApplicationException exception = assertThrows(WebApplicationException.class,
-            () -> this.resource.getChanges("xwiki", " ", VERSION, null, null, null, null, false, null, null));
+            () -> this.resource.getChanges("xwiki", " ", VERSION, null, null, null, null, null, null, false, null, null));
 
         assertRefusal(exception.getResponse(), Response.Status.BAD_REQUEST, NO_RELEASE_NOTE_IN_URL);
     }

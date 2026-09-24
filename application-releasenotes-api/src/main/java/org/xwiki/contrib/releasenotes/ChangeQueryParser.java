@@ -73,6 +73,22 @@ public interface ChangeQueryParser
     String CONTAINS_SCREENSHOTS = "containsScreenshots";
 
     /**
+     * The parameter asking for the changes carrying backward compatibility and migration notes, spelled {@code true},
+     * or for the ones carrying none, spelled {@code false}.
+     *
+     * @since 2.8
+     */
+    String CONTAINS_MIGRATION_NOTES = "containsMigrationNotes";
+
+    /**
+     * The parameter asking for the changes of the versions marked released, spelled {@code true}, or for the ones of
+     * the versions that are not, spelled {@code false}.
+     *
+     * @since 2.8
+     */
+    String RELEASED = "released";
+
+    /**
      * The parameter holding how many changes to return at most.
      */
     String LIMIT = "limit";
@@ -91,7 +107,7 @@ public interface ChangeQueryParser
      * <p>
      * A value that cannot be read as what it filters is ignored rather than reported, since these parameters come
      * from a URL or from a macro call: an unusable {@code limit} falls back to the default one, and an unusable
-     * {@code containsScreenshots} filters nothing.
+     * {@code containsScreenshots}, {@code containsMigrationNotes} or {@code released} filters nothing.
      *
      * @param parameters the filters and the page to return, keyed by the parameter names of this interface. Values
      *            are read as text, so both a string and the value it stands for are accepted.

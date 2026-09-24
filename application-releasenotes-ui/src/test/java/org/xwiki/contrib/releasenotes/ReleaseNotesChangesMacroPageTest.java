@@ -253,6 +253,46 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
+     * Asked for its migration notes, a release note displays them instead of its changes: one query per audience,
+     * each keeping only the changes carrying migration notes, and none of the queries of the changes sections.
+     */
+    @Test
+    void theMigrationNotesOfEachAudienceAreQueriedInsteadOfTheChanges() throws Exception
+    {
+        when(this.query.execute()).thenReturn(changes(0));
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertEquals(AUDIENCE_COUNT, this.statements.size(), "Expected one query per audience: " + this.statements);
+        List<String> audiences = List.of("user", "administrator", "developer");
+        for (int index = 0; index < AUDIENCE_COUNT; index++) {
+            assertEquals(List.of(audiences.get(index)), boundValues(index, "audience"));
+            assertEquals(List.of(PRODUCT), boundValues(index, "product"));
+            assertTrue(this.statements.get(index).contains("and length(changes.migrationNotes) > 0"),
+                this.statements.get(index));
+            assertFalse(this.statements.get(index).contains("changes.screenshots"), this.statements.get(index));
+        }
+        assertTrue(html.text().contains("releasenotes.changes.migrationNotes.none"), html.body().html());
+        assertTrue(html.select("h2").isEmpty(), "No section is displayed when no change carries migration notes.");
+    }
+
+    /**
+     * The changes of a release note are displayed whether or not they carry migration notes: a change needing a
+     * migration step is still a change to announce.
+     */
+    @Test
+    void theChangesAreNotFilteredOnTheirMigrationNotes() throws Exception
+    {
+        when(this.query.execute()).thenReturn(changes(0));
+
+        renderReleaseNote(100);
+
+        for (String statement : this.statements) {
+            assertFalse(statement.contains("migrationNotes"), statement);
+        }
+    }
+
+    /**
      * The product is not part of the page name, it comes from the release note xobject, and every section must
      * query that product only.
      */
@@ -507,6 +547,21 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     private Document renderReleaseNote(String shortVersion, String version, String product, int limit)
         throws Exception
     {
+        return renderReleaseNote(shortVersion, version, product, String.format("limit=\"%s\"", limit));
+    }
+
+    /**
+     * Renders a release note whose body is the macro under test, called with the passed parameters.
+     *
+     * @param shortVersion the name of the space holding the release note
+     * @param version the value stored in the {@code version} field of the release note xobject
+     * @param product the value stored in the {@code product} field of the release note xobject
+     * @param macroParameters the parameters of the macro call
+     * @return the rendered release note
+     */
+    private Document renderReleaseNote(String shortVersion, String version, String product, String macroParameters)
+        throws Exception
+    {
         loadPage(RELEASE_NOTE_CLASS);
 
         XWikiDocument releaseNote = new XWikiDocument(new DocumentReference("xwiki",
@@ -515,7 +570,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         BaseObject releaseNoteObject = releaseNote.newXObject(RELEASE_NOTE_CLASS, this.context);
         releaseNoteObject.setStringValue("product", product);
         releaseNoteObject.setStringValue("version", version);
-        releaseNote.setContent(String.format("{{releasenotechanges limit=\"%s\"/}}", limit));
+        releaseNote.setContent(String.format("{{releasenotechanges %s/}}", macroParameters));
         this.xwiki.saveDocument(releaseNote, this.context);
         // The macro reads the version off the page it is on, so that page has to be the one in the context.
         this.context.setDoc(releaseNote);

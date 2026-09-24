@@ -307,6 +307,7 @@ class DefaultChangeManagerTest
         Change change = change();
         change.setSummary("Starting a wiki now takes half the time.");
         change.setDescription("The long story.");
+        change.setMigrationNotes("Delete the Solr cache before upgrading.");
         change.setAudience(Audience.DEVELOPER);
         change.setImportance(Importance.HIGH);
         change.setCategory("Performance");
@@ -320,6 +321,7 @@ class DefaultChangeManagerTest
         assertEquals("Faster startup", created.getTitle());
         assertEquals("Starting a wiki now takes half the time.", created.getSummary());
         assertEquals("The long story.", created.getDescription());
+        assertEquals("Delete the Solr cache before upgrading.", created.getMigrationNotes());
         assertEquals(Audience.DEVELOPER, created.getAudience());
         assertEquals(Importance.HIGH, created.getImportance());
         assertEquals("Performance", created.getCategory());
@@ -354,6 +356,7 @@ class DefaultChangeManagerTest
         Change created = this.manager.getChange(entry("Entry001"));
         assertEquals(Audience.USER, created.getAudience(), "Expected the audience the template defaults to.");
         assertNull(created.getImportance());
+        assertEquals("", created.getMigrationNotes(), "Expected a change to need no migration by default.");
         assertTrue(created.getScreenshots().isEmpty());
         assertTrue(load(entry("Entry001")).isEnforceRequiredRights(),
             "Expected the change to enforce its required rights, as its template does.");
@@ -390,6 +393,7 @@ class DefaultChangeManagerTest
         Change change = change();
         change.setSummary("Starting a wiki now takes half the time.");
         change.setDescription("The long story.");
+        change.setMigrationNotes("Delete the Solr cache before upgrading.");
         change.setCategory("Performance");
         change.setAudience(Audience.DEVELOPER);
         change.setImportance(Importance.HIGH);
@@ -403,6 +407,7 @@ class DefaultChangeManagerTest
         assertEquals("Even faster startup", stored.getTitle());
         assertEquals("", stored.getSummary());
         assertEquals("", stored.getDescription());
+        assertEquals("", stored.getMigrationNotes());
         assertEquals("", stored.getCategory());
         assertNull(stored.getAudience());
         assertNull(stored.getImportance());

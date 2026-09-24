@@ -46,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
@@ -312,6 +313,42 @@ class GetChangesMacroPageTest extends PageTest
         renderFilters("products=\"TestProduct\"");
 
         assertFalse(mainStatement().contains("changes.screenshots"), "Got: " + mainStatement());
+    }
+
+    /**
+     * The migration notes filter reaches the search, which keeps only the changes carrying some.
+     */
+    @Test
+    void containsMigrationNotesSelectsTheChangesCarryingSome() throws Exception
+    {
+        renderFilters("containsMigrationNotes=\"true\"");
+
+        assertTrue(mainStatement().contains("and length(changes.migrationNotes) > 0"), "Got: " + mainStatement());
+    }
+
+    /**
+     * The released filter reaches the search, which looks up the release notes marked released to keep the changes
+     * of their versions only, and keeps no change at all when no version is released.
+     */
+    @Test
+    void releasedSelectsTheChangesOfTheReleasedVersions() throws Exception
+    {
+        renderFilters("released=\"true\"");
+
+        verify(this.queryManager).createQuery(contains("where note.released = 1"), anyString());
+        assertTrue(mainStatement().contains("and 1 = 0"), "Got: " + mainStatement());
+    }
+
+    /**
+     * Neither filter has a default value, and an unset filter must not restrict the result at all.
+     */
+    @Test
+    void migrationNotesAndReleasedUnsetDoNotFilter() throws Exception
+    {
+        renderFilters("products=\"TestProduct\"");
+
+        assertFalse(mainStatement().contains("migrationNotes"), "Got: " + mainStatement());
+        verify(this.queryManager, never()).createQuery(contains("note.released"), anyString());
     }
 
     /**

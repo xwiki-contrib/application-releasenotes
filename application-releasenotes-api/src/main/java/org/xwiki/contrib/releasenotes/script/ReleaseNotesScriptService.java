@@ -19,6 +19,9 @@
  */
 package org.xwiki.contrib.releasenotes.script;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +39,7 @@ import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.extension.version.internal.DefaultVersion;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.script.service.ScriptService;
 import org.xwiki.stability.Unstable;
@@ -218,6 +222,37 @@ public class ReleaseNotesScriptService implements ScriptService
     public ChangeSearchResult search(ChangeQuery query) throws ReleaseNotesException
     {
         return this.changeManager.search(query);
+    }
+
+    /**
+     * Compares two versions the way they are released, e.g. {@code 11.4-rc-1} comes before {@code 11.4}, which comes
+     * before {@code 11.10}.
+     *
+     * @param version the version to compare, in its long form
+     * @param otherVersion the version to compare it to, in its long form
+     * @return a negative number when the first version comes before the other one, zero when they are the same
+     *         version, and a positive number when it comes after
+     * @since 2.8
+     */
+    public int compareVersions(String version, String otherVersion)
+    {
+        return new DefaultVersion(version).compareTo(new DefaultVersion(otherVersion));
+    }
+
+    /**
+     * Orders versions the way they are released, e.g. {@code 11.4-milestone-1} before {@code 11.4-rc-1} before
+     * {@code 11.4} before {@code 11.10}, which is the order their migration notes are applied in when upgrading.
+     *
+     * @param versions the versions to order, in their long form
+     * @return a new list holding those versions, oldest first
+     * @since 2.8
+     */
+    public List<String> sortVersions(Collection<String> versions)
+    {
+        List<String> sorted = new ArrayList<>(versions);
+        sorted.sort(Comparator.comparing(DefaultVersion::new));
+
+        return sorted;
     }
 
     /**

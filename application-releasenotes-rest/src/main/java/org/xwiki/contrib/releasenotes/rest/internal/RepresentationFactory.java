@@ -138,6 +138,7 @@ public class RepresentationFactory
         change.setTitle(representation.getTitle());
         change.setSummary(representation.getSummary());
         change.setDescription(representation.getDescription());
+        change.setMigrationNotes(representation.getMigrationNotes());
         change.setAudience(toAudience(representation.getAudience()));
         change.setImportance(toImportance(representation.getImportance()));
         change.setCategory(representation.getCategory());
@@ -159,6 +160,7 @@ public class RepresentationFactory
         representation.setTitle(change.getTitle());
         representation.setSummary(change.getSummary());
         representation.setDescription(change.getDescription());
+        representation.setMigrationNotes(change.getMigrationNotes());
         representation.setAudience(change.getAudience() == null ? null : change.getAudience().getStoredValue());
         representation.setImportance(change.getImportance() == null ? null : toName(change.getImportance()));
         representation.setCategory(change.getCategory());
