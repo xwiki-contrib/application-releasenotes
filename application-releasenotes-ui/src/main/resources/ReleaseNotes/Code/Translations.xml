@@ -52,6 +52,7 @@ ReleaseNotes.Code.EntryClass_version=Version
 ReleaseNotes.Code.EntryClass_type=Type
 ReleaseNotes.Code.EntryClass_type_Change=Change
 ReleaseNotes.Code.EntryClass_type_Contributors=Contributors
+ReleaseNotes.Code.EntryClass_type_Translators=Translators
 ReleaseNotes.Code.Change.ChangeClass_category=Category
 ReleaseNotes.Code.Change.ChangeClass_title=Title
 ReleaseNotes.Code.Change.ChangeClass_summary=Short Description
@@ -71,6 +72,7 @@ ReleaseNotes.Code.ReleaseNoteClass_released=Is Released?
 ReleaseNotes.Code.ReleaseNoteClass_date=Release Date
 ReleaseNotes.Code.ContributorsClass_contributors=Contributors
 ReleaseNotes.Code.ContributorsClass_contributors.hint=One contributor name per line.
+ReleaseNotes.Code.TranslatorsClass_language=Language
 ReleaseNotes.Code.ReleaseNotesConfigClass_product=Default Product Name
 ReleaseNotes.Code.ReleaseNotesConfigClass_product.hint=The product name pre-filled in the release note creation form. Leave it empty when the wiki holds release notes for several products.
 ReleaseNotes.Code.ReleaseNotesConfigClass_template=Template Reference
@@ -188,6 +190,15 @@ releasenotes.changes.display.moreDetails=More details
 releasenotes.contributors.intro=The following people have contributed code to this release (sorted alphabetically):
 releasenotes.contributors.notGenerated=The list of contributors has not been generated yet.
 releasenotes.contributors.submit=Add contributors
+
+# Translated languages of a release note
+
+releasenotes.translators.intro=This release is available in the following languages:
+releasenotes.translators.notGenerated=The list of translated languages has not been generated yet.
+releasenotes.translators.languages.label=Translated languages
+releasenotes.translators.languages.hint=Comma-separated or one per line. Saving replaces the whole list.
+releasenotes.translators.submit=Save languages
+releasenotes.translators.saveComment=Set the translated languages
 
 # Release change page and its edit form
 
