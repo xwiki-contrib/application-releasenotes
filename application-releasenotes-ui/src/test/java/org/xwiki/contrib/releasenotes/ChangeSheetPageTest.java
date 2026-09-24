@@ -41,7 +41,6 @@ import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet}.
@@ -95,7 +94,7 @@ class ChangeSheetPageTest extends PageTest
         Document html = renderChangeInEditMode();
 
         Elements labels = html.select("dt label");
-        assertEquals(10, labels.size(), "Expected a label for each of the ten edited fields.");
+        assertEquals(9, labels.size(), "Expected a label for each of the nine edited fields.");
         for (Element label : labels) {
             String target = label.attr("for");
             assertFalse(target.isEmpty(), "The '" + label.text() + "' label is bound to no field.");
@@ -138,8 +137,7 @@ class ChangeSheetPageTest extends PageTest
             "ReleaseNotes.Code.Change.ChangeClass_importance",
             "ReleaseNotes.Code.Change.ChangeClass_summary",
             "ReleaseNotes.Code.Change.ChangeClass_screenshots",
-            "ReleaseNotes.Code.Change.ChangeClass_description",
-            "ReleaseNotes.Code.Change.ChangeClass_migrationNotes"),
+            "ReleaseNotes.Code.Change.ChangeClass_description"),
             renderChangeInEditMode().select("dt label").eachText());
     }
 
@@ -159,39 +157,19 @@ class ChangeSheetPageTest extends PageTest
     }
 
     /**
-     * The migration notes of a change are what someone upgrading to its version has to act on, so its page displays
-     * them under a heading of their own, telling them apart from the description.
+     * A migration note is added from its own button, which asks the form for a migration note entry: the form carries
+     * that type along, since saving it only stores the fields it holds, and the entry would otherwise be saved as the
+     * plain change its template makes it.
      */
     @Test
-    void theMigrationNotesAreDisplayedUnderTheirOwnHeading() throws Exception
+    void theTypeTheEntryWasAddedWithIsCarriedByTheForm() throws Exception
     {
-        Document html = renderChangeInViewMode("Delete the Solr cache before upgrading.");
+        this.request.put("type", "Migration");
 
-        assertEquals(List.of("releasenotes.change.migrationNotes.heading"), html.select("h1").eachText());
-        assertTrue(html.text().contains("Delete the Solr cache before upgrading."), html.text());
-    }
+        Elements typeInputs =
+            renderChangeInEditMode().select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_type]");
 
-    /**
-     * Most changes need no migration, and their page gets no empty section for it.
-     */
-    @Test
-    void aChangeNeedingNoMigrationHasNoMigrationNotesHeading() throws Exception
-    {
-        Document html = renderChangeInViewMode("");
-
-        assertTrue(html.select("h1").isEmpty(), html.body().html());
-    }
-
-    private Document renderChangeInViewMode(String migrationNotes) throws Exception
-    {
-        XWikiDocument change = createChange();
-        change.getXObject(CHANGE_CLASS).setLargeStringValue("summary", "The summary");
-        change.getXObject(CHANGE_CLASS).setLargeStringValue("migrationNotes", migrationNotes);
-        this.xwiki.saveDocument(change, this.context);
-        this.context.setDoc(change);
-        this.context.setAction("view");
-
-        return renderHTMLPage(change);
+        assertEquals(List.of("Migration"), typeInputs.eachAttr("value"));
     }
 
     private Document renderChangeInEditMode() throws Exception

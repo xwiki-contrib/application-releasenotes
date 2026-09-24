@@ -38,7 +38,7 @@ public class ChangeRepresentation
 
     private String description;
 
-    private String migrationNotes;
+    private String type;
 
     private String audience;
 
@@ -106,22 +106,22 @@ public class ChangeRepresentation
     }
 
     /**
-     * @return what has to be done when upgrading to the version of the change, in wiki syntax, or {@code null} when
-     *         the change needs nothing of the kind
+     * @return what the change stands for, {@code change} for something the version brings or {@code migration} for
+     *         something to do when upgrading to it, which decides the part of the release note it is displayed in
      * @since 2.8
      */
-    public String getMigrationNotes()
+    public String getType()
     {
-        return this.migrationNotes;
+        return this.type;
     }
 
     /**
-     * @param migrationNotes see {@link #getMigrationNotes()}
+     * @param type see {@link #getType()}
      * @since 2.8
      */
-    public void setMigrationNotes(String migrationNotes)
+    public void setType(String type)
     {
-        this.migrationNotes = migrationNotes;
+        this.type = type;
     }
 
     /**

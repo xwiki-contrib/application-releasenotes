@@ -77,20 +77,7 @@ public class ChangeSearcher
 
     private static final String SCREENSHOTS = "screenshots";
 
-    private static final String MIGRATION_NOTES = "migrationNotes";
-
-    /**
-     * The condition matching the changes that carry migration notes. The notes are a large string, which some
-     * databases cannot compare with {@code <>} and give back as null rather than as the empty string, and whose length
-     * is null, and thus not greater than zero, in both cases.
-     */
-    private static final String NOTED_FORMAT = "length(%s.%s) > 0";
-
-    /**
-     * How many page names a single {@code not in} list holds at most, below the thousand elements some databases
-     * accept in such a list.
-     */
-    private static final int NAMES_PER_LIST = 500;
+    private static final String TYPE = "type";
 
     /**
      * The condition matching the changes that are illustrated. The media of a change are stored as a large string,
@@ -139,8 +126,8 @@ public class ChangeSearcher
             conditions.add(query.getContainsScreenshots() ? illustrated : NOT + illustrated);
         }
 
-        if (query.getContainsMigrationNotes() != null) {
-            addMigrationNotesFilter(conditions, bindings, query.getContainsMigrationNotes());
+        if (query.getTypes() != null) {
+            addFilters(conditions, bindings, ENTRY_ALIAS, TYPE, query.getTypes());
         }
 
         if (query.getReleased() != null) {
@@ -159,40 +146,6 @@ public class ChangeSearcher
             CHANGE_ALIAS, IMPORTANCE);
 
         return executeSearch(statement, bindings, query);
-    }
-
-    /**
-     * Filters on whether the changes carry migration notes. Asking for the ones carrying some is a condition on the
-     * notes themselves. Asking for the ones carrying none cannot be the negation of that condition: a property is
-     * joined in rather than read, so a change saved before its class had migration notes, which holds no such
-     * property at all, would match neither. The pages carrying notes are therefore looked up first, and left out.
-     */
-    private void addMigrationNotesFilter(List<String> conditions, Map<String, String> bindings,
-        boolean containsMigrationNotes) throws ReleaseNotesException
-    {
-        if (containsMigrationNotes) {
-            conditions.add(String.format(NOTED_FORMAT, CHANGE_ALIAS, MIGRATION_NOTES));
-            return;
-        }
-
-        String statement = String.format("select doc.fullName from Document doc, doc.object(%s) as %s where %s",
-            serialize(ReleaseNotesReferences.CHANGE_CLASS), CHANGE_ALIAS,
-            String.format(NOTED_FORMAT, CHANGE_ALIAS, MIGRATION_NOTES));
-        List<String> notedNames = executeLookup(statement, "the changes carrying migration notes");
-        int index = 0;
-
-        for (int start = 0; start < notedNames.size(); start += NAMES_PER_LIST) {
-            List<String> parameters = new ArrayList<>();
-
-            for (String name : notedNames.subList(start, Math.min(notedNames.size(), start + NAMES_PER_LIST))) {
-                index++;
-                String parameter = "noted" + index;
-                parameters.add(":" + parameter);
-                bindings.put(parameter, name);
-            }
-
-            conditions.add(String.format("doc.fullName not in (%s)", String.join(", ", parameters)));
-        }
     }
 
     /**

@@ -35,6 +35,7 @@ import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.ChangeFilter;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
+import org.xwiki.contrib.releasenotes.ChangeType;
 import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.stability.Unstable;
 
@@ -77,7 +78,7 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         setFilters(parameters, CATEGORIES, query::setCategories, UnaryOperator.identity());
         setFilters(parameters, IMPORTANCE, query::setImportances, DefaultChangeQueryParser::parseImportance);
         setBoolean(parameters, CONTAINS_SCREENSHOTS, query::setContainsScreenshots);
-        setBoolean(parameters, CONTAINS_MIGRATION_NOTES, query::setContainsMigrationNotes);
+        setFilters(parameters, TYPES, query::setTypes, DefaultChangeQueryParser::parseType);
         setBoolean(parameters, RELEASED, query::setReleased);
 
         int limit = getNumber(parameters, LIMIT, ChangeQuery.DEFAULT_LIMIT);
@@ -141,6 +142,18 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
     private static int getPrefixLength(ChangeFilter.Operator operator)
     {
         return operator == ChangeFilter.Operator.LIKE ? 0 : operator.getSyntax().length();
+    }
+
+    /**
+     * @param value one value of a type filter
+     * @return the value that type is stored as when the value names a type whatever its case, and the value itself
+     *         otherwise, so that a pattern stays a pattern
+     */
+    private static String parseType(String value)
+    {
+        ChangeType type = ChangeType.fromStoredValue(value);
+
+        return type == null ? value : type.getStoredValue();
     }
 
     /**

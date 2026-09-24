@@ -43,8 +43,9 @@
 ## Inputs:
 ## - $changeItems
 ## - $displayEditLink
-## A migration note is read by someone about to upgrade, who needs to know which change it is about and what to do:
-## each change is displayed as its title, linking to the change page, followed by its migration notes.
+## A migration note is read by someone about to upgrade, who needs to know what it is about and what to do: each note
+## is displayed as its title, linking to its page, followed by its summary, and by a link to the details its page
+## holds when it has a description.
 #foreach ($item in $changeItems)
   #set ($changeDoc = $xwiki.getDocument($item))
   #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
@@ -58,9 +59,13 @@
   * (((
 (% class="rn-migration-change" %)[[$title&gt;&gt;doc:$changeReference]]${displayEditLinkMarkup}
 
-## Display the migration notes through the change document, so that their rich text is rendered in the context of
-## that document rather than of this displayer, the way the change's own page renders them.
-$changeDoc.display('migrationNotes', 'view', $changeObject)
+## Display the summary through the change document, so that its rich text is rendered in the context of that
+## document rather than of this displayer, the way the change's own page renders it.
+$changeDoc.display('summary', 'view', $changeObject)
+#if ("$!changeObject.getValue('description')" != '')
+
+[[${moreDetailsLabel}&gt;&gt;doc:$changeReference]]
+#end
 )))
 #end
 {{/velocity}}</content>

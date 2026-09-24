@@ -316,14 +316,16 @@ class GetChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The migration notes filter reaches the search, which keeps only the changes carrying some.
+     * The type filter reaches the search, which keeps only the entries of the types asked for, whatever the case they
+     * are written with.
      */
     @Test
-    void containsMigrationNotesSelectsTheChangesCarryingSome() throws Exception
+    void typesSelectsTheEntriesOfTheTypesAskedFor() throws Exception
     {
-        renderFilters("containsMigrationNotes=\"true\"");
+        renderFilters("types=\"migration\"");
 
-        assertTrue(mainStatement().contains("and length(changes.migrationNotes) > 0"), "Got: " + mainStatement());
+        assertTrue(mainStatement().contains("and (entries.type like :type1)"), "Got: " + mainStatement());
+        verify(this.query).bindValue("type1", "Migration");
     }
 
     /**
@@ -343,11 +345,11 @@ class GetChangesMacroPageTest extends PageTest
      * Neither filter has a default value, and an unset filter must not restrict the result at all.
      */
     @Test
-    void migrationNotesAndReleasedUnsetDoNotFilter() throws Exception
+    void typesAndReleasedUnsetDoNotFilter() throws Exception
     {
         renderFilters("products=\"TestProduct\"");
 
-        assertFalse(mainStatement().contains("migrationNotes"), "Got: " + mainStatement());
+        assertFalse(mainStatement().contains("entries.type"), "Got: " + mainStatement());
         verify(this.queryManager, never()).createQuery(contains("note.released"), anyString());
     }
 

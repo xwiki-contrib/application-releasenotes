@@ -83,7 +83,9 @@
   ## a hidden input. The label must point at the picker, which is the control the author interacts with.
   #displayEntryField($changeObject, 'screenshots', '_picker')
   #displayEntryField($changeObject, 'description', '')
-  #displayEntryField($changeObject, 'migrationNotes', '')
+  ## The type of the entry is given by the button the entry was added from, a change or a migration note, and is
+  ## not one of the fields an author fills: the form carries it along so that saving the form stores it.
+  $doc.display('type', 'hidden', $entryObject)
   )))
 #else
   ## The page title is the change title, so the text comes first and the media closes the page: a reader arriving
@@ -95,13 +97,6 @@
   #if ("$!description" != '')
 
     $doc.display('description', 'view', $changeObject)
-  #end
-  #set ($migrationNotes = $changeObject.getValue('migrationNotes'))
-  #if ("$!migrationNotes" != '')
-
-    = {{translation key="releasenotes.change.migrationNotes.heading"/}} =
-
-    $doc.display('migrationNotes', 'view', $changeObject)
   #end
 
   #displayScreenshots($changeObject, true, false)

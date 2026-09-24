@@ -42,13 +42,13 @@ public class Change
 
     private String version;
 
+    private ChangeType type;
+
     private String title;
 
     private String summary;
 
     private String description;
-
-    private String migrationNotes;
 
     private Audience audience;
 
@@ -93,6 +93,29 @@ public class Change
     public void setVersion(String version)
     {
         this.version = version;
+    }
+
+    /**
+     * @return whether the change is something the version brings or something to do when upgrading to it, which
+     *         decides the part of the release note it is displayed in, or {@code null} when it is not said, which a
+     *         new change takes as a {@link ChangeType#CHANGE}
+     * @since 2.8
+     */
+    public ChangeType getType()
+    {
+        return this.type;
+    }
+
+    /**
+     * @param type see {@link #getType()}
+     * @since 2.8
+     */
+    @PropertyDescription("What the change stands for: \"change\" for something the version brings, displayed among "
+        + "the new and noteworthy changes, or \"migration\" for something to do when upgrading to the version, "
+        + "displayed among the backward compatibility and migration notes. Defaults to \"change\".")
+    public void setType(ChangeType type)
+    {
+        this.type = type;
     }
 
     /**
@@ -146,28 +169,6 @@ public class Change
     public void setDescription(String description)
     {
         this.description = description;
-    }
-
-    /**
-     * @return what has to be done when upgrading to the version of the change, because the change breaks backward
-     *         compatibility or needs a migration step, or {@code null} when it needs nothing of the kind
-     * @since 2.8
-     */
-    public String getMigrationNotes()
-    {
-        return this.migrationNotes;
-    }
-
-    /**
-     * @param migrationNotes see {@link #getMigrationNotes()}
-     * @since 2.8
-     */
-    @PropertyDescription("What has to be done when upgrading to the version of the change, when the change breaks "
-        + "backward compatibility or needs a migration step, in wiki syntax. It is displayed in the backward "
-        + "compatibility and migration notes of the release note and of the upgrade notes.")
-    public void setMigrationNotes(String migrationNotes)
-    {
-        this.migrationNotes = migrationNotes;
     }
 
     /**

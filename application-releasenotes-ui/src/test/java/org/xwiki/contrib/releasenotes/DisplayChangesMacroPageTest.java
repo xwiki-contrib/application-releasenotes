@@ -89,7 +89,7 @@ class DisplayChangesMacroPageTest extends PageTest
 
     private static final String SUMMARY = "What the first change brings";
 
-    private static final String MIGRATION_NOTES = "Delete the Solr cache before upgrading";
+    private static final String MIGRATION_NOTE_SUMMARY = "Delete the Solr cache before upgrading";
 
     /**
      * The translation key of the label of the link towards the page of a change, which is what a page test displays
@@ -354,23 +354,38 @@ class DisplayChangesMacroPageTest extends PageTest
     }
 
     /**
-     * Someone reading migration notes is about to upgrade and needs to know both which change a note is about and
-     * what to do: the migration notes displayer gives the title of the change, linking to its page, and its notes.
+     * Someone reading migration notes is about to upgrade and needs to know both what a note is about and what to do:
+     * the migration notes displayer gives the title of the note, linking to its page, and its summary.
      */
     @Test
-    void theMigrationNotesDisplayerDisplaysTheLinkedTitleAndTheNotes() throws Exception
+    void theMigrationNotesDisplayerDisplaysTheLinkedTitleAndTheSummary() throws Exception
     {
-        DocumentReference change = createChange("Entry001", TITLE, SUMMARY, "", "", MIGRATION_NOTES);
+        DocumentReference note = createChange("Entry001", TITLE, MIGRATION_NOTE_SUMMARY, "");
 
-        Document html = render("displayer=\"migrationNotes\"", change);
+        Document html = render("displayer=\"migrationNotes\"", note);
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
         Elements links = html.select("li .rn-migration-change a");
         assertEquals(1, links.size(), html.body().html());
         assertEquals(TITLE, links.text());
         assertTrue(links.attr("href").contains("Entry001"), links.attr("href"));
-        assertTrue(html.text().contains(MIGRATION_NOTES), html.text());
-        assertFalse(html.text().contains(SUMMARY), "Only the migration notes are displayed: " + html.text());
+        assertTrue(html.text().contains(MIGRATION_NOTE_SUMMARY), html.text());
+        assertFalse(html.text().contains(MORE_DETAILS_KEY), "A note with no description has no details to link to.");
+    }
+
+    /**
+     * The steps of a migration can be long, so a note may keep them in its description, which its page displays and
+     * which the list links to.
+     */
+    @Test
+    void theMigrationNotesDisplayerLinksToTheDescription() throws Exception
+    {
+        DocumentReference note = createChange("Entry001", TITLE, MIGRATION_NOTE_SUMMARY, "The long procedure");
+
+        Document html = render("displayer=\"migrationNotes\"", note);
+
+        assertEquals(List.of(TITLE, MORE_DETAILS_KEY), html.select("li a").eachText(), html.body().html());
+        assertFalse(html.text().contains("The long procedure"), "The description is displayed on its page only.");
     }
 
     /**
@@ -383,7 +398,7 @@ class DisplayChangesMacroPageTest extends PageTest
         this.componentManager.registerComponent(ScriptService.class, "rendering",
             new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
         DocumentReference change =
-            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", SUMMARY, "", "", MIGRATION_NOTES);
+            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", MIGRATION_NOTE_SUMMARY, "");
 
         Document html = render("displayer=\"migrationNotes\"", change);
 
@@ -444,12 +459,6 @@ class DisplayChangesMacroPageTest extends PageTest
     private DocumentReference createChange(String name, String title, String summary, String description,
         String screenshots) throws Exception
     {
-        return createChange(name, title, summary, description, screenshots, "");
-    }
-
-    private DocumentReference createChange(String name, String title, String summary, String description,
-        String screenshots, String migrationNotes) throws Exception
-    {
         List<String> spaces = new ArrayList<>(VERSION_SPACE);
         spaces.add(name);
         XWikiDocument change = new XWikiDocument(new DocumentReference("xwiki", spaces, "WebHome"));
@@ -459,7 +468,6 @@ class DisplayChangesMacroPageTest extends PageTest
         changeObject.setLargeStringValue("summary", summary);
         changeObject.setLargeStringValue("description", description);
         changeObject.setStringValue("screenshots", screenshots);
-        changeObject.setLargeStringValue("migrationNotes", migrationNotes);
         this.xwiki.saveDocument(change, this.context);
 
         return change.getDocumentReference();

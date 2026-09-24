@@ -59,14 +59,13 @@ final class ReleaseNotesXClasses
         BaseClass entryClass = createClass(oldcore, ReleaseNotesReferences.ENTRY_CLASS);
         entryClass.addDBListField("product", "Product", "");
         entryClass.addDBListField("version", "Version", "");
-        entryClass.addStaticListField("type", "Type", "Change|Contributors");
+        entryClass.addStaticListField("type", "Type", "Change|Contributors|Migration");
         saveClass(oldcore, entryClass);
 
         BaseClass changeClass = createClass(oldcore, ReleaseNotesReferences.CHANGE_CLASS);
         changeClass.addTextField("title", "Title", 80);
         changeClass.addTextAreaField("summary", "Summary", 80, 5);
         changeClass.addTextAreaField("description", "Description", 80, 10);
-        changeClass.addTextAreaField("migrationNotes", "Backward Compatibility and Migration Notes", 80, 10);
         changeClass.addStaticListField("audience", "Target Audience",
             "user=User|administrator=Administrator|developer=Developer");
         changeClass.addStaticListField("importance", "Importance", "2=High|1=Medium|0=Low");

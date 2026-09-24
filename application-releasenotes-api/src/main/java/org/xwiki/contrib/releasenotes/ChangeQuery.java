@@ -62,7 +62,7 @@ public class ChangeQuery
 
     private Boolean containsScreenshots;
 
-    private Boolean containsMigrationNotes;
+    private List<ChangeFilter> types;
 
     private Boolean released;
 
@@ -169,22 +169,27 @@ public class ChangeQuery
     }
 
     /**
-     * @return {@code true} to return only the changes carrying backward compatibility and migration notes,
-     *         {@code false} to return only the ones carrying none, and {@code null} to return both
+     * Unlike the other properties of a change, the type is not filtered at all until a caller says otherwise, rather
+     * than filtered with a filter matching every value: filtering a property is joining it in, which would leave out
+     * an entry holding no type at all from every search of the wiki, and not only from the ones asking about the type.
+     *
+     * @return the filters on the type of the changes, whose values are the stored ones, e.g. {@code Migration}, or
+     *         {@code null} to return the changes of every type
+     * @see ChangeType#getStoredValue()
      * @since 2.8
      */
-    public Boolean getContainsMigrationNotes()
+    public List<ChangeFilter> getTypes()
     {
-        return this.containsMigrationNotes;
+        return this.types;
     }
 
     /**
-     * @param containsMigrationNotes whether the changes carry migration notes, or {@code null} to not ask
+     * @param types the filters on the type of the changes, or {@code null} to not filter on it
      * @since 2.8
      */
-    public void setContainsMigrationNotes(Boolean containsMigrationNotes)
+    public void setTypes(List<ChangeFilter> types)
     {
-        this.containsMigrationNotes = containsMigrationNotes;
+        this.types = types;
     }
 
     /**

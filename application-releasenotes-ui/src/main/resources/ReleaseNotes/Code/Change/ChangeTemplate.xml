@@ -112,21 +112,6 @@
         <validationRegExp/>
         <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
       </description>
-      <migrationNotes>
-        <customDisplay/>
-        <disabled>0</disabled>
-        <editor>---</editor>
-        <name>migrationNotes</name>
-        <number>9</number>
-        <picker>0</picker>
-        <prettyName>Backward Compatibility and Migration Notes (Optional)</prettyName>
-        <rows>20</rows>
-        <size>120</size>
-        <unmodifiable>0</unmodifiable>
-        <validationMessage/>
-        <validationRegExp/>
-        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
-      </migrationNotes>
       <importance>
         <cache>0</cache>
         <customDisplay/>
@@ -244,9 +229,6 @@
       <description/>
     </property>
     <property>
-      <migrationNotes/>
-    </property>
-    <property>
       <importance>1</importance>
     </property>
     <property>
@@ -315,7 +297,7 @@
         <unmodifiable>0</unmodifiable>
         <validationMessage/>
         <validationRegExp/>
-        <values>Change</values>
+        <values>Change|Contributors|Migration</values>
         <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
       </type>
       <version>

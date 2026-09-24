@@ -179,8 +179,7 @@ class UpgradeNotesPageTest extends PageTest
         renderUpgrade("10.11.9", "12.0");
 
         assertEquals(1, this.changesStatements.size(), "Expected one search for the notes of the whole range.");
-        assertTrue(this.changesStatements.get(0).contains("and length(changes.migrationNotes) > 0"),
-            this.changesStatements.get(0));
+        assertEquals(List.of("Migration"), boundValues("type"));
         assertEquals(List.of(PRODUCT), boundValues("product"));
         assertEquals(List.of("11.4-rc-1", "11.4", "11.10"), boundValues("version"));
         assertTrue(this.changesStatements.get(0).contains("entries.product = :product1"),
@@ -297,10 +296,10 @@ class UpgradeNotesPageTest extends PageTest
         BaseObject entryObject = change.newXObject(ENTRY_CLASS, this.context);
         entryObject.setStringValue("product", PRODUCT);
         entryObject.setStringValue("version", versionOf(shortVersion));
-        entryObject.setStringValue("type", "Change");
+        entryObject.setStringValue("type", "Migration");
         BaseObject changeObject = change.newXObject(CHANGE_CLASS, this.context);
         changeObject.setStringValue("title", title);
-        changeObject.setLargeStringValue("migrationNotes", "Notes of " + title);
+        changeObject.setLargeStringValue("summary", "Notes of " + title);
         this.xwiki.saveDocument(change, this.context);
 
         return this.localSerializer.serialize(change.getDocumentReference());

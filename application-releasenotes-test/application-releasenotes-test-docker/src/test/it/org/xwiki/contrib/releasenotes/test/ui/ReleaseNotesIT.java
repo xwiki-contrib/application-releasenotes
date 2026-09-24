@@ -585,6 +585,8 @@ class ReleaseNotesIT
         assertTrue(content.contains("A ten change migration notes"), "Got: " + content);
         assertTrue(content.indexOf("A nine change") < content.indexOf("A ten change"),
             "The notes of 9.0 must come before the ones of 10.0, got: " + content);
+        // Only the migration notes are listed, and not the changes the versions bring.
+        assertFalse(content.contains("A nine change summary"), "Got: " + content);
 
         // The version upgraded from is already installed, so its notes are not part of the upgrade.
         content = upgradeNotesContent(setup, "9.0", "10.0");
@@ -629,7 +631,18 @@ class ReleaseNotesIT
             "product", VERSION_PRODUCT, "type", "Change", "version", version);
         setup.addObject(entry, "ReleaseNotes.Code.Change.ChangeClass",
             "title", title, "summary", title + " summary", "audience", "user", "importance", "1",
-            "category", "development", "migrationNotes", title + " migration notes");
+            "category", "development");
+
+        // A migration note is an entry of its own, of the migration type, which the reports of the changes and the
+        // upgrade notes tell apart from the change by that type only.
+        DocumentReference migrationNote = new DocumentReference("xwiki",
+            List.of("ReleaseNotes", "Data", VERSION_PRODUCT, version, "Entry002"), "WebHome");
+        setup.rest().delete(migrationNote);
+        setup.createPage(migrationNote, "", title + " migration");
+        setup.addObject(migrationNote, "ReleaseNotes.Code.EntryClass",
+            "product", VERSION_PRODUCT, "type", "Migration", "version", version);
+        setup.addObject(migrationNote, "ReleaseNotes.Code.Change.ChangeClass",
+            "title", title + " migration", "summary", title + " migration notes", "audience", "administrator");
     }
 
     /**

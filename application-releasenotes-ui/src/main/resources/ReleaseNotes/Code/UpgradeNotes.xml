@@ -144,7 +144,7 @@
 
 {{velocity}}
 #if (!$rangeVersions.isEmpty())
-{{getChanges limit="$upgradeNotesLimit" products="$escapedProduct" versions="$escapedVersions" containsMigrationNotes="true" contextVariable="upgradeNotes"/}}
+{{getChanges limit="$upgradeNotesLimit" products="$escapedProduct" versions="$escapedVersions" types="Migration" contextVariable="upgradeNotes"/}}
 #end
 {{/velocity}}
 

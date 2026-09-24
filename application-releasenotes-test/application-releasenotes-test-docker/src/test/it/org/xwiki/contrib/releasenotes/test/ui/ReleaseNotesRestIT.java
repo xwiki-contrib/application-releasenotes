@@ -73,6 +73,9 @@ class ReleaseNotesRestIT
     private static final DocumentReference UPDATED_CHANGE = new DocumentReference("xwiki",
         List.of("ReleaseNotes", "Data", UPDATE_PRODUCT, "1.0M1", "Entry001"), "WebHome");
 
+    private static final DocumentReference MIGRATION_NOTE = new DocumentReference("xwiki",
+        List.of("ReleaseNotes", "Data", UPDATE_PRODUCT, "1.0M1", "Entry002"), "WebHome");
+
     /**
      * Walks what the endpoints exist for: one call creates the release note of a version, in the page its version
      * says, and one call per change fills it, each change page carrying both of the objects that make an entry
@@ -218,6 +221,7 @@ class ReleaseNotesRestIT
         // An entry left behind would be counted when the next one is numbered, so every page this test creates is
         // deleted before it runs again.
         setup.rest().delete(UPDATED_CHANGE);
+        setup.rest().delete(MIGRATION_NOTE);
         setup.rest().delete(UPDATED_RELEASE_NOTE);
 
         ReleaseNotesRestClient client = new ReleaseNotesRestClient(setup);
@@ -245,7 +249,6 @@ class ReleaseNotesRestIT
             getClass().getResourceAsStream("/screenshot.png"), true);
 
         change.setScreenshots(List.of("shot.png"));
-        change.setMigrationNotes("Clear the cache before upgrading.");
 
         JsonResponse illustrated = client.put(changePath("Entry001"), change);
 
@@ -261,12 +264,24 @@ class ReleaseNotesRestIT
         assertEquals("A change worth a screenshot", read.getTitle());
         assertEquals(List.of("shot.png"), read.getScreenshots());
 
-        assertEquals("Clear the cache before upgrading.", read.getMigrationNotes());
+        assertEquals("change", read.getType(), "A change posted with no type is a plain change.");
 
-        // The changes carrying migration notes are found by the database itself, and the change of a version that is
-        // not released yet is not a released change.
-        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?containsMigrationNotes=true")));
-        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?containsMigrationNotes=false")));
+        // A migration note is posted as an entry of its own, of the migration type, and each type is listed apart.
+        ChangeRepresentation migrationNote = new ChangeRepresentation();
+        migrationNote.setType("migration");
+        migrationNote.setTitle("Clear the cache before upgrading");
+        migrationNote.setAudience("administrator");
+
+        JsonResponse createdNote = client.post(updatePath() + "/changes", migrationNote);
+
+        assertEquals(201, createdNote.getStatus(), createdNote.getBody());
+        assertEquals("migration", createdNote.as(ChangeRepresentation.class).getType());
+        assertEquals("Migration",
+            propertyValue(setup, MIGRATION_NOTE, "ReleaseNotes.Code.EntryClass", "type"));
+        assertEquals(List.of("Entry002"), entriesOf(client.get(updatePath() + "/changes?type=migration")));
+        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?type=change")));
+
+        // The entries of a version that is not released yet are not released entries.
         assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=true")));
 
         // A replacement replaces: the summary this one leaves out is emptied rather than kept, which is what a
@@ -290,8 +305,8 @@ class ReleaseNotesRestIT
         assertEquals("1", propertyValue(setup, UPDATED_RELEASE_NOTE, "ReleaseNotes.Code.ReleaseNoteClass",
             "released"));
 
-        // Once its version is released, the change is a released change.
-        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?released=true")));
+        // Once their version is released, its entries are released entries.
+        assertEquals(List.of("Entry001", "Entry002"), entriesOf(client.get(updatePath() + "/changes?released=true")));
         assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=false")));
 
         // The release note is read back at the URL it was replaced at, as the change was.

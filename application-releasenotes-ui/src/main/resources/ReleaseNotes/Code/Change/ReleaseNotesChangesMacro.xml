@@ -236,13 +236,13 @@
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
 #end
 {{/velocity}}
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
 #end
 {{/velocity}}
 
@@ -290,13 +290,13 @@
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
 #end
 {{/velocity}}
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
 #end
 {{/velocity}}
 
@@ -344,13 +344,13 @@
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
 #end
 {{/velocity}}
 
 {{velocity}}
 #if (!$migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
 #end
 {{/velocity}}
 
@@ -379,16 +379,38 @@
 
 {{velocity}}
 #if ($migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsMigrationNotes="true" contextVariable="userMigrationNotes"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" types="Migration" contextVariable="userMigrationNotes"/}}
 
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsMigrationNotes="true" contextVariable="adminMigrationNotes"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" types="Migration" contextVariable="adminMigrationNotes"/}}
 
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" containsMigrationNotes="true" contextVariable="developerMigrationNotes"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" types="Migration" contextVariable="developerMigrationNotes"/}}
 #end
 {{/velocity}}
 
 {{velocity}}
 #if ($migrationNotesOnly)
+  ## A migration note is added the way a change is, from a page the release note takes for it, and only differs from a
+  ## change by the type of its entry, which the form of the new entry carries along. The audience is left for the
+  ## author to choose in that form, a migration note being as often for administrators as for developers.
+  #if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'migrationadd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
+    #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
+  #end
+  #if ($hasEdit &amp;&amp; $released != '1')
+{{html clean='false'}}
+&lt;form&gt;
+  &lt;input type="hidden" name="action" value="migrationadd"/&gt;
+  &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
+  &lt;input type="hidden" name="template" value="ReleaseNotes.Code.Change.ChangeTemplate"/&gt;
+  &lt;input type="hidden" name="product" value="$!escapetool.xml($product)"/&gt;
+  &lt;input type="hidden" name="version" value="$!escapetool.xml($version)"/&gt;
+  &lt;input type="hidden" name="type" value="Migration"/&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.changes.migrationNotes.submit'))"/&gt;
+  &lt;/span&gt;
+&lt;/form&gt;
+{{/html}}
+
+  #end
   #removeExcludedChanges($userMigrationNotes)
   #removeExcludedChanges($adminMigrationNotes)
   #removeExcludedChanges($developerMigrationNotes)

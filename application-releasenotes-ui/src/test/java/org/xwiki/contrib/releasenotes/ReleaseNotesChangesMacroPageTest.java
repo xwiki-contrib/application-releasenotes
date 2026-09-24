@@ -254,7 +254,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
 
     /**
      * Asked for its migration notes, a release note displays them instead of its changes: one query per audience,
-     * each keeping only the changes carrying migration notes, and none of the queries of the changes sections.
+     * each keeping only the migration note entries, and none of the queries of the changes sections.
      */
     @Test
     void theMigrationNotesOfEachAudienceAreQueriedInsteadOfTheChanges() throws Exception
@@ -268,8 +268,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         for (int index = 0; index < AUDIENCE_COUNT; index++) {
             assertEquals(List.of(audiences.get(index)), boundValues(index, "audience"));
             assertEquals(List.of(PRODUCT), boundValues(index, "product"));
-            assertTrue(this.statements.get(index).contains("and length(changes.migrationNotes) > 0"),
-                this.statements.get(index));
+            assertEquals(List.of("Migration"), boundValues(index, "type"));
             assertFalse(this.statements.get(index).contains("changes.screenshots"), this.statements.get(index));
         }
         assertTrue(html.text().contains("releasenotes.changes.migrationNotes.none"), html.body().html());
@@ -277,19 +276,35 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The changes of a release note are displayed whether or not they carry migration notes: a change needing a
-     * migration step is still a change to announce.
+     * The sections of the changes only display the changes, and leave the migration notes to their own section:
+     * otherwise every migration note would be displayed twice in a release note.
      */
     @Test
-    void theChangesAreNotFilteredOnTheirMigrationNotes() throws Exception
+    void theChangesSectionsOnlyAskForChanges() throws Exception
     {
         when(this.query.execute()).thenReturn(changes(0));
 
         renderReleaseNote(100);
 
-        for (String statement : this.statements) {
-            assertFalse(statement.contains("migrationNotes"), statement);
+        for (int index = 0; index < this.statements.size(); index++) {
+            assertEquals(List.of("Change"), boundValues(index, "type"));
         }
+    }
+
+    /**
+     * A migration note is added from the migration notes section, whose button asks for an entry of the migration
+     * type, while the buttons of the changes sections leave the type to the change template.
+     */
+    @Test
+    void theMigrationNotesSectionOffersToAddAMigrationNote() throws Exception
+    {
+        registerVelocityTool("hasEdit", true);
+        when(this.query.execute()).thenReturn(changes(0));
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertEquals(List.of("migrationadd"), html.select("form input[name=action]").eachAttr("value"));
+        assertEquals(List.of("Migration"), html.select("form input[name=type]").eachAttr("value"));
     }
 
     /**

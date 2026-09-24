@@ -209,7 +209,7 @@ beside them, in the context variable named after ##contextVariable## suffixed wi
   'categories': $xcontext.macro.params.categories,
   'importance': $xcontext.macro.params.importance,
   'containsScreenshots': $xcontext.macro.params.containsScreenshots,
-  'containsMigrationNotes': $xcontext.macro.params.containsMigrationNotes,
+  'types': $xcontext.macro.params.types,
   'released': $xcontext.macro.params.released,
   'limit': $xcontext.macro.params.limit,
   'offset': $xcontext.macro.params.offset
@@ -938,13 +938,13 @@ beside them, in the context variable named after ##contextVariable## suffixed wi
       <defaultValue/>
     </property>
     <property>
-      <description>"true" to only collect the changes carrying backward compatibility and migration notes, "false" to only collect the ones carrying none. Leave it out to collect both.</description>
+      <description>Comma-separated list of entry types: "Change" for the changes a version brings, "Migration" for its backward compatibility and migration notes, whatever their case. Leave it out to collect both.</description>
     </property>
     <property>
       <mandatory>0</mandatory>
     </property>
     <property>
-      <name>containsMigrationNotes</name>
+      <name>types</name>
     </property>
   </object>
   <object>

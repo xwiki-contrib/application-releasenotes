@@ -147,7 +147,7 @@ class DefaultChangesResourceTest
         when(this.changeManager.getChange(ENTRY)).thenReturn(change());
 
         ChangesRepresentation representation =
-            this.resource.getChanges("xwiki", PRODUCT, VERSION, "user", "Performance", "high", "true", "false",
+            this.resource.getChanges("xwiki", PRODUCT, VERSION, "user", "Performance", "high", "true", "migration",
                 "true", false, "10", "20");
 
         Map<String, ?> parameters = capturedParameters();
@@ -158,7 +158,7 @@ class DefaultChangesResourceTest
         assertEquals("Performance", parameters.get(ChangeQueryParser.CATEGORIES));
         assertEquals("high", parameters.get(ChangeQueryParser.IMPORTANCE));
         assertEquals("true", parameters.get(ChangeQueryParser.CONTAINS_SCREENSHOTS));
-        assertEquals("false", parameters.get(ChangeQueryParser.CONTAINS_MIGRATION_NOTES));
+        assertEquals("migration", parameters.get(ChangeQueryParser.TYPES));
         assertEquals("true", parameters.get(ChangeQueryParser.RELEASED));
         assertEquals("10", parameters.get(ChangeQueryParser.LIMIT));
         assertEquals("20", parameters.get(ChangeQueryParser.OFFSET));
@@ -193,7 +193,7 @@ class DefaultChangesResourceTest
         Map<String, ?> parameters = capturedParameters();
 
         assertNull(parameters.get(ChangeQueryParser.AUDIENCE));
-        assertNull(parameters.get(ChangeQueryParser.CONTAINS_MIGRATION_NOTES));
+        assertNull(parameters.get(ChangeQueryParser.TYPES));
         assertNull(parameters.get(ChangeQueryParser.RELEASED));
         assertNull(parameters.get(ChangeQueryParser.LIMIT));
     }

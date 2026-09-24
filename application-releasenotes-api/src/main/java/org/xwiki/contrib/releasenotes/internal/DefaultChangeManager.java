@@ -33,6 +33,7 @@ import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
+import org.xwiki.contrib.releasenotes.ChangeType;
 import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
@@ -57,10 +58,10 @@ import com.xpn.xwiki.objects.BaseObject;
 public class DefaultChangeManager implements ChangeManager
 {
     /**
-     * The value the {@code type} property of an entry holds when that entry is a change and not the contributors of
-     * the release note. Every query looking for changes filters on it.
+     * The property of an entry holding whether it is a change, a migration note or the contributors of the release
+     * note.
      */
-    private static final String CHANGE_TYPE = "Change";
+    private static final String TYPE = "type";
 
     /**
      * The media of a change are stored as one comma-separated value, so a media name holding a comma cannot be
@@ -77,8 +78,6 @@ public class DefaultChangeManager implements ChangeManager
     private static final String SUMMARY = "summary";
 
     private static final String DESCRIPTION = "description";
-
-    private static final String MIGRATION_NOTES = "migrationNotes";
 
     private static final String AUDIENCE = "audience";
 
@@ -153,7 +152,7 @@ public class DefaultChangeManager implements ChangeManager
             BaseObject entry = document.getXObject(ReleaseNotesReferences.ENTRY_CLASS, true, xcontext);
             entry.set(PRODUCT, product, xcontext);
             entry.set(VERSION, version, xcontext);
-            entry.set("type", CHANGE_TYPE, xcontext);
+            entry.set(TYPE, getStoredType(change), xcontext);
 
             BaseObject changeObject = document.getXObject(ReleaseNotesReferences.CHANGE_CLASS, true, xcontext);
             changeObject.set(TITLE, title, xcontext);
@@ -177,7 +176,6 @@ public class DefaultChangeManager implements ChangeManager
     {
         setIfNotNull(changeObject, SUMMARY, change.getSummary(), xcontext);
         setIfNotNull(changeObject, DESCRIPTION, change.getDescription(), xcontext);
-        setIfNotNull(changeObject, MIGRATION_NOTES, change.getMigrationNotes(), xcontext);
         setIfNotNull(changeObject, CATEGORY, change.getCategory(), xcontext);
 
         if (change.getAudience() != null) {
@@ -221,7 +219,6 @@ public class DefaultChangeManager implements ChangeManager
             changeObject.set(TITLE, title, xcontext);
             changeObject.set(SUMMARY, StringUtils.defaultString(change.getSummary()), xcontext);
             changeObject.set(DESCRIPTION, StringUtils.defaultString(change.getDescription()), xcontext);
-            changeObject.set(MIGRATION_NOTES, StringUtils.defaultString(change.getMigrationNotes()), xcontext);
             changeObject.set(CATEGORY, StringUtils.defaultString(change.getCategory()), xcontext);
             changeObject.set(AUDIENCE,
                 change.getAudience() == null ? "" : change.getAudience().getStoredValue(), xcontext);
@@ -229,6 +226,9 @@ public class DefaultChangeManager implements ChangeManager
                 change.getImportance() == null ? "" : change.getImportance().getStoredValue(), xcontext);
             changeObject.set(SCREENSHOTS, change.getScreenshots() == null ? ""
                 : String.join(SCREENSHOT_SEPARATOR, change.getScreenshots()), xcontext);
+            // A type left out is the one of a plain change rather than emptied, since an entry holding no type is
+            // neither a change nor a migration note.
+            entry.set(TYPE, getStoredType(change), xcontext);
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to write the change of the page [%s].", reference), e);
@@ -289,13 +289,22 @@ public class DefaultChangeManager implements ChangeManager
         change.setTitle(changeObject.getStringValue(TITLE));
         change.setSummary(changeObject.getLargeStringValue(SUMMARY));
         change.setDescription(changeObject.getLargeStringValue(DESCRIPTION));
-        change.setMigrationNotes(changeObject.getLargeStringValue(MIGRATION_NOTES));
+        change.setType(ChangeType.fromStoredValue(entry.getStringValue(TYPE)));
         change.setAudience(Audience.fromStoredValue(changeObject.getStringValue(AUDIENCE)));
         change.setImportance(Importance.fromStoredValue(changeObject.getStringValue(IMPORTANCE)));
         change.setCategory(changeObject.getStringValue(CATEGORY));
         change.setScreenshots(splitScreenshots(changeObject.getStringValue(SCREENSHOTS)));
 
         return change;
+    }
+
+    /**
+     * @return the value the entry of the passed change holds as its type, which is the one of a plain change when the
+     *         change does not say, since that is what a change was before it could be a migration note
+     */
+    private static String getStoredType(Change change)
+    {
+        return change.getType() == null ? ChangeType.CHANGE.getStoredValue() : change.getType().getStoredValue();
     }
 
     private List<String> splitScreenshots(String screenshots)

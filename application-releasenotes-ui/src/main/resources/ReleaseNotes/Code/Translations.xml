@@ -52,6 +52,7 @@ ReleaseNotes.Code.EntryClass_version=Version
 ReleaseNotes.Code.EntryClass_type=Type
 ReleaseNotes.Code.EntryClass_type_Change=Change
 ReleaseNotes.Code.EntryClass_type_Contributors=Contributors
+ReleaseNotes.Code.EntryClass_type_Migration=Migration Note
 ReleaseNotes.Code.Change.ChangeClass_category=Category
 ReleaseNotes.Code.Change.ChangeClass_title=Title
 ReleaseNotes.Code.Change.ChangeClass_summary=Short Description
@@ -183,6 +184,7 @@ releasenotes.changes.truncated=This release note has more changes than the ones 
 releasenotes.changes.display.nochanges=No changes!
 releasenotes.changes.display.moreDetails=More details
 releasenotes.changes.migrationNotes.none=No backward compatibility or migration notes.
+releasenotes.changes.migrationNotes.submit=Add Migration Note
 
 # Contributors list of a release note
 
@@ -200,7 +202,6 @@ releasenotes.change.conventions.optionalTitle=When entering a Miscellaneous chan
 releasenotes.change.screenshots.placeholder=Select or upload screenshots and videos...
 releasenotes.change.view=View this change
 releasenotes.change.video.notSupported=Sorry, your browser doesn't support embedded videos.
-releasenotes.change.migrationNotes.heading=Backward Compatibility and Migration Notes
 
 # Creation of a release note entry
 

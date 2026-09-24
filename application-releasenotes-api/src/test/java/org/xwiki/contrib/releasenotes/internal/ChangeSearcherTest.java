@@ -19,7 +19,6 @@
  */
 package org.xwiki.contrib.releasenotes.internal;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -77,12 +76,6 @@ class ChangeSearcherTest
         "select distinct note.version from Document doc, doc.object(ReleaseNotes.Code.ReleaseNoteClass) as note";
 
     /**
-     * The statement the pages of the changes carrying migration notes are read with.
-     */
-    private static final String NOTED_CHANGES_STATEMENT = "select doc.fullName from Document doc, "
-        + "doc.object(ReleaseNotes.Code.Change.ChangeClass) as changes where length(changes.migrationNotes) > 0";
-
-    /**
      * The statement the product and the version of the release notes marked released are read with.
      */
     private static final String RELEASED_NOTES_STATEMENT = "select distinct note.product, note.version from "
@@ -111,9 +104,6 @@ class ChangeSearcherTest
     private Query existingVersionsQuery;
 
     @Mock
-    private Query notedChangesQuery;
-
-    @Mock
     private Query releasedNotesQuery;
 
     @BeforeEach
@@ -128,9 +118,7 @@ class ChangeSearcherTest
 
         when(this.queryManager.createQuery(anyString(), anyString())).thenAnswer(invocation -> {
             String statement = invocation.getArgument(0);
-            if (NOTED_CHANGES_STATEMENT.equals(statement)) {
-                return this.notedChangesQuery;
-            } else if (RELEASED_NOTES_STATEMENT.equals(statement)) {
+            if (RELEASED_NOTES_STATEMENT.equals(statement)) {
                 return this.releasedNotesQuery;
             }
             return statement.startsWith("select") ? this.existingVersionsQuery : this.query;
@@ -138,7 +126,6 @@ class ChangeSearcherTest
         when(this.query.bindValue(anyString(), any())).thenReturn(this.query);
         when(this.query.execute()).thenReturn(List.of());
         when(this.existingVersionsQuery.execute()).thenReturn(List.of());
-        when(this.notedChangesQuery.execute()).thenReturn(List.of());
         when(this.releasedNotesQuery.execute()).thenReturn(List.of());
     }
 
@@ -236,79 +223,31 @@ class ChangeSearcherTest
     }
 
     /**
-     * The changes carrying migration notes are asked about the notes themselves, whose length is what tells a note
-     * from none whether the database gives an empty large string back as null or as the empty string.
+     * The type of a change is filtered on its entry, like its product and its version, once a caller asks about it.
      */
     @Test
-    void theChangesCarryingMigrationNotesAreAskedAboutTheirNotes() throws Exception
+    void theTypeFilterIsBoundToTheTypeOfTheEntry() throws Exception
     {
         ChangeQuery query = new ChangeQuery();
-        query.setContainsMigrationNotes(true);
+        query.setTypes(List.of(new ChangeFilter(Operator.EQUALS, "Migration")));
 
         this.searcher.search(query);
 
-        verify(this.queryManager).createQuery(searchStatementContaining("and length(changes.migrationNotes) > 0"),
-            anyString());
-        verify(this.queryManager, never()).createQuery(NOTED_CHANGES_STATEMENT, Query.XWQL);
+        verify(this.queryManager).createQuery(searchStatementContaining("and (entries.type = :type1)"), anyString());
+        verify(this.query).bindValue("type1", "Migration");
     }
 
     /**
-     * The changes carrying no migration notes are the ones that are not among the changes carrying some, rather
-     * than the ones whose notes are empty: a change saved before its class had migration notes holds no such
-     * property at all, and a condition on the property would leave it out of both answers.
+     * A search asking nothing about the type does not filter on it at all, rather than with a filter matching every
+     * value: filtering on it would join it in, and leave out the entries holding no type from every search.
      */
     @Test
-    void theChangesCarryingNoMigrationNotesAreTheOthers() throws Exception
+    void aSearchAskingNothingAboutTheTypeDoesNotFilterOnIt() throws Exception
     {
-        doReturn(List.of(CHANGE, "second")).when(this.notedChangesQuery).execute();
-        ChangeQuery query = new ChangeQuery();
-        query.setContainsMigrationNotes(false);
-
-        this.searcher.search(query);
-
-        verify(this.queryManager).createQuery(searchStatementContaining("and doc.fullName not in (:noted1, :noted2)"),
-            anyString());
-        verify(this.query).bindValue("noted1", CHANGE);
-        verify(this.query).bindValue("noted2", "second");
-    }
-
-    /**
-     * The pages carrying migration notes are left out in lists of a bounded size, since some databases refuse an
-     * {@code in} list of a thousand elements or more.
-     */
-    @Test
-    void manyChangesCarryingMigrationNotesAreLeftOutInSeveralLists() throws Exception
-    {
-        List<String> notedNames = new ArrayList<>();
-
-        for (int index = 1; index <= 501; index++) {
-            notedNames.add("Change" + index);
-        }
-
-        doReturn(notedNames).when(this.notedChangesQuery).execute();
-        ChangeQuery query = new ChangeQuery();
-        query.setContainsMigrationNotes(false);
-
-        this.searcher.search(query);
-
-        verify(this.queryManager).createQuery(searchStatementContaining(":noted500) and doc.fullName not in (:noted501)"),
-            anyString());
-        verify(this.query).bindValue("noted501", "Change501");
-    }
-
-    /**
-     * When no change carries migration notes, every change carries none, and the search is not restricted.
-     */
-    @Test
-    void theChangesCarryingNoMigrationNotesAreAllOfThemWhenNoneCarriesAny() throws Exception
-    {
-        ChangeQuery query = new ChangeQuery();
-        query.setContainsMigrationNotes(false);
-
-        this.searcher.search(query);
+        this.searcher.search(new ChangeQuery());
 
         verify(this.queryManager).createQuery(
-            argThat((String statement) -> statement.startsWith("from") && !statement.contains("not in")),
+            argThat((String statement) -> statement.startsWith("from") && !statement.contains("entries.type")),
             anyString());
     }
 
