@@ -305,8 +305,10 @@ class ReleaseNotesRestIT
         assertEquals("1", propertyValue(setup, UPDATED_RELEASE_NOTE, "ReleaseNotes.Code.ReleaseNoteClass",
             "released"));
 
-        // Once their version is released, its entries are released entries.
-        assertEquals(List.of("Entry001", "Entry002"), entriesOf(client.get(updatePath() + "/changes?released=true")));
+        // Once their version is released, its entries are released entries. They are listed the most important
+        // first, and the migration note holds the importance its template gives it while the change had its own
+        // emptied by the replacement above.
+        assertEquals(List.of("Entry002", "Entry001"), entriesOf(client.get(updatePath() + "/changes?released=true")));
         assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=false")));
 
         // The release note is read back at the URL it was replaced at, as the change was.

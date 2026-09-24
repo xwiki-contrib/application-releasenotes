@@ -641,8 +641,12 @@ class ReleaseNotesIT
         setup.createPage(migrationNote, "", title + " migration");
         setup.addObject(migrationNote, "ReleaseNotes.Code.EntryClass",
             "product", VERSION_PRODUCT, "type", "Migration", "version", version);
+        // An object added this way only holds the properties it is given, and the changes are ordered on their
+        // importance, which leaves out of every search a change holding none: the note is given one, as the change
+        // template gives one to every change the application creates.
         setup.addObject(migrationNote, "ReleaseNotes.Code.Change.ChangeClass",
-            "title", title + " migration", "summary", title + " migration notes", "audience", "administrator");
+            "title", title + " migration", "summary", title + " migration notes", "audience", "administrator",
+            "importance", "1");
     }
 
     /**
