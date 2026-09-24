@@ -52,6 +52,11 @@
   #if ("$!request.type" != '')
     #set ($discard = $entryObject.set('type', $!request.type))
   #end
+  ## The entry fields are not edited here, but they must still be submitted: on save the page is rebuilt from the
+  ## template and the submitted fields only, so values taken from the request above would be lost otherwise.
+  $doc.display('product', 'hidden', $entryObject)
+  $doc.display('version', 'hidden', $entryObject)
+  $doc.display('type', 'hidden', $entryObject)
   (% class='xform col-xs-12' %)(((
   #displayEntryField($contributorsObject, 'contributors', '')
   )))

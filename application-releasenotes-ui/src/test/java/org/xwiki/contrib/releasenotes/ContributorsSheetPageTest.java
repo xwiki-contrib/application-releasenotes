@@ -61,12 +61,14 @@ class ContributorsSheetPageTest extends PageTest
     private static final DocumentReference CONTRIBUTORS =
         new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", "XWiki", "8.3M1", "Contributors"), "WebHome");
 
+    private static final DocumentReference ENTRY_CLASS = new DocumentReference("xwiki", CODE_SPACE, "EntryClass");
+
     @BeforeEach
     void setUp() throws Exception
     {
         this.componentManager.registerMockComponent(EditConfiguration.class);
 
-        loadPage(new DocumentReference("xwiki", CODE_SPACE, "EntryClass"));
+        loadPage(ENTRY_CLASS);
         loadPage(CONTRIBUTORS_CLASS);
         loadPage(new DocumentReference("xwiki", CODE_SPACE, "EntryVelocityMacros"));
         loadPage(new DocumentReference("xwiki", CODE_SPACE, "ContributorsSheet"));
@@ -95,5 +97,37 @@ class ContributorsSheetPageTest extends PageTest
         assertEquals(1, html.select("dt label[for='" + fieldId + "']").size(),
             "Expected the contributors label to be bound to the contributors field.");
         assertEquals("textarea", html.select("#" + fieldId.replace(".", "\\.")).get(0).tagName());
+    }
+
+    /**
+     * The "Add contributors" button passes the release note product, version and type as request parameters. The
+     * page being rebuilt on save from its template and the submitted fields only, the form has to submit them for the
+     * created entry to hold them.
+     */
+    @Test
+    void theEntryFieldsTakenFromTheRequestAreSubmitted() throws Exception
+    {
+        XWikiDocument contributors = new XWikiDocument(CONTRIBUTORS);
+        contributors.newXObject(ENTRY_CLASS, this.context);
+        contributors.newXObject(CONTRIBUTORS_CLASS, this.context);
+        contributors.setContent("{{include reference=\"ReleaseNotes.Code.ContributorsSheet\" context=\"current\"/}}");
+        this.xwiki.saveDocument(contributors, this.context);
+        this.context.setDoc(contributors);
+        this.context.setAction("edit");
+        this.request.put("product", "XWiki");
+        this.request.put("version", "8.3M1");
+        this.request.put("type", "Contributors");
+
+        Document html = renderHTMLPage(contributors);
+
+        assertEquals("XWiki", hiddenFieldValue(html, "product"));
+        assertEquals("8.3M1", hiddenFieldValue(html, "version"));
+        assertEquals("Contributors", hiddenFieldValue(html, "type"));
+    }
+
+    private static String hiddenFieldValue(Document html, String propertyName)
+    {
+        return html.select("input[type='hidden'][name='ReleaseNotes.Code.EntryClass_0_" + propertyName + "']")
+            .attr("value");
     }
 }
