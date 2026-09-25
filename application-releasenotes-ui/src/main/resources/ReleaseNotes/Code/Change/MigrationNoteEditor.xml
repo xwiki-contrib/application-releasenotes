@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 -->
 
-<xwikidoc version="1.6" reference="ReleaseNotes.Code.Change.ChangeDisplayerMigrationNotes" locale="">
+<xwikidoc version="1.6" reference="ReleaseNotes.Code.Change.MigrationNoteEditor" locale="">
   <web>ReleaseNotes.Code.Change</web>
-  <name>ChangeDisplayerMigrationNotes</name>
+  <name>MigrationNoteEditor</name>
   <language/>
   <defaultLanguage/>
   <translation>0</translation>
@@ -31,51 +31,34 @@
   <author>xwiki:XWiki.Admin</author>
   <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
   <version>1.1</version>
-  <title>ChangeDisplayerMigrationNotes</title>
+  <title>MigrationNoteEditor</title>
   <comment/>
   <minorEdit>false</minorEdit>
   <syntaxId>xwiki/2.1</syntaxId>
   <hidden>true</hidden>
   <enforceRequiredRights>true</enforceRequiredRights>
-  <content>{{include reference="ReleaseNotes.Code.Change.ChangeDisplayerVelocityMacros"/}}
-
-{{velocity}}
-## Inputs:
-## - $changeItems
-## - $displayEditLink
-## A migration note is read by someone about to upgrade, who needs to know what it is about and what to do: each note
-## is displayed as a section titled after it, holding its description, which is what the form of a note fills.
-#foreach ($item in $changeItems)
-  #set ($changeDoc = $xwiki.getDocument($item))
-  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
-  #generateDisplayEditLink($displayEditLink, $changeDoc)
-  ## The title is emitted into a heading, which is wiki syntax, so it is escaped: left raw, a title carrying wiki
-  ## syntax would have it rendered, macros included.
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
-  ## The title of a note is optional, so a note is only given a section of its own when it has one: a heading holding
-  ## no text at all would leave an empty section in the release note, and an empty entry in its table of contents.
-  ## The edit link then follows the description, the only thing that displays such a note.
-  #if ($title != '')
-  (% class="rn-migration-change" %)
-  == $title${displayEditLinkMarkup}==
-  #end
-  ## Display the description through the change document, so that its rich text is rendered in the context of that
-  ## document rather than of this displayer, the way the note's own page renders it. The edit link of a note with no
-  ## title reaches the description line through a variable rather than through a directive closing that line:
-  ## Velocity drops the newline ending a line that ends with a directive.
-  #set ($descriptionEditLinkMarkup = '')
-  #if ($title == '')
-    #set ($descriptionEditLinkMarkup = $displayEditLinkMarkup)
-  #end
-  $changeDoc.display('description', 'view', $changeObject)$descriptionEditLinkMarkup
-
-#end
+  <content>{{velocity}}
+## Inputs, set by the sheet of the entry, which includes this page in edit mode:
+## - $entryObject
+## - $changeObject
+## A migration note is what to do when upgrading, which its title and its description say: those are the only fields
+## an author fills. The audience, the category, the importance and the media of a change mean nothing for a note,
+## and keep the values the change template gives them, the importance included, which the notes are ordered on.
+## The product, the version and the type of the entry are given by the release note the note was added from, and
+## the form carries them along so that saving the form stores them.
+(% class='xform col-xs-12' %)(((
+#displayEntryField($changeObject, 'title', '')
+#displayEntryField($changeObject, 'description', '')
+$doc.display('product', 'hidden', $entryObject)
+$doc.display('version', 'hidden', $entryObject)
+$doc.display('type', 'hidden', $entryObject)
+)))
 {{/velocity}}</content>
   <object>
-    <name>ReleaseNotes.Code.Change.ChangeDisplayerMigrationNotes</name>
+    <name>ReleaseNotes.Code.Change.MigrationNoteEditor</name>
     <number>0</number>
     <className>XWiki.RequiredRightClass</className>
-    <guid>e438357c-91cc-4e8b-8e92-2f00767eb340</guid>
+    <guid>5b7b0436-06ce-447e-932f-54bb7f25ccea</guid>
     <class>
       <name>XWiki.RequiredRightClass</name>
       <customClass/>

@@ -645,7 +645,7 @@ class ReleaseNotesIT
         // importance, which leaves out of every search a change holding none: the note is given one, as the change
         // template gives one to every change the application creates.
         setup.addObject(migrationNote, "ReleaseNotes.Code.Change.ChangeClass",
-            "title", title + " migration", "summary", title + " migration notes", "audience", "administrator",
+            "title", title + " migration", "description", title + " migration notes", "audience", "administrator",
             "importance", "1");
     }
 

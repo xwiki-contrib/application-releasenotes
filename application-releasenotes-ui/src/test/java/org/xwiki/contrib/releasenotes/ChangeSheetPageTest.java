@@ -41,6 +41,7 @@ import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet}.
@@ -80,6 +81,7 @@ class ChangeSheetPageTest extends PageTest
         loadPage(CHANGE_CLASS);
         loadPage(new DocumentReference("xwiki", CODE_SPACE, "EntryVelocityMacros"));
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayerVelocityMacros"));
+        loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "MigrationNoteEditor"));
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeSheet"));
     }
 
@@ -170,6 +172,30 @@ class ChangeSheetPageTest extends PageTest
             renderChangeInEditMode().select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_type]");
 
         assertEquals(List.of("Migration"), typeInputs.eachAttr("value"));
+    }
+
+    /**
+     * A migration note is only a title and a description: its form holds nothing else an author fills, and carries
+     * the product, the version and the type of its entry along so that saving it stores them.
+     */
+    @Test
+    void aMigrationNoteIsEditedWithItsTitleAndItsDescriptionOnly() throws Exception
+    {
+        this.request.put("type", "Migration");
+        this.request.put("product", "XWiki");
+        this.request.put("version", "8.3-milestone-1");
+
+        Document html = renderChangeInEditMode();
+
+        assertEquals(List.of(
+            "ReleaseNotes.Code.Change.ChangeClass_title",
+            "ReleaseNotes.Code.Change.ChangeClass_description"),
+            html.select("dt label").eachText());
+        assertEquals(List.of("XWiki"),
+            html.select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_product]").eachAttr("value"));
+        assertEquals(List.of("8.3-milestone-1"),
+            html.select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_version]").eachAttr("value"));
+        assertTrue(html.select("ul li").isEmpty(), "The conventions of a change do not apply to a migration note.");
     }
 
     private Document renderChangeInEditMode() throws Exception

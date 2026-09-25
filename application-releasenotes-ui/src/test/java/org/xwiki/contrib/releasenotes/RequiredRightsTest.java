@@ -106,6 +106,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerSimple", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerVelocityMacros", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeSheet", SCRIPT);
+        EXPECTED_RIGHTS.put("Code/Change/MigrationNoteEditor", SCRIPT);
         EXPECTED_RIGHTS.put("Code/ContributorsSheet", SCRIPT);
         EXPECTED_RIGHTS.put("Code/EntryVelocityMacros", SCRIPT);
         EXPECTED_RIGHTS.put("Code/HomeCustomReport", SCRIPT);

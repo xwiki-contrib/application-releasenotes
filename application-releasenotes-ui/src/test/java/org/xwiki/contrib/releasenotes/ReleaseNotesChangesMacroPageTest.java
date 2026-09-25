@@ -275,7 +275,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The migration notes of a release note are displayed one after the other, each titled with a third level
+     * The migration notes of a release note are displayed one after the other, each titled with a second level
      * heading, whatever the audience each of them is written for, with no heading per audience.
      */
     @Test
@@ -294,9 +294,10 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
-        assertEquals(List.of("An admin note", "A developer note"), html.select("h3").eachText(),
-            "Expected each note titled with a third level heading: " + html.body().html());
-        assertTrue(html.select("h2").isEmpty(), "Expected no heading per audience: " + html.body().html());
+        // The only headings are the titles of the notes, and none of them is the heading of an audience.
+        assertEquals(List.of("An admin note", "A developer note"), html.select("h2").eachText(),
+            "Expected each note titled with a second level heading, and no heading per audience: "
+                + html.body().html());
     }
 
     /**
@@ -630,7 +631,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         BaseObject noteObject = note.newXObject(
             new DocumentReference("xwiki", List.of("ReleaseNotes", "Code", "Change"), "ChangeClass"), this.context);
         noteObject.setStringValue("title", title);
-        noteObject.setLargeStringValue("summary", title + " summary");
+        noteObject.setLargeStringValue("description", title + " description");
         noteObject.setStringValue("audience", audience);
         this.xwiki.saveDocument(note, this.context);
 

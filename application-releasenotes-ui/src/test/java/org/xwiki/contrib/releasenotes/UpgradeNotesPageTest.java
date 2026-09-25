@@ -222,9 +222,11 @@ class UpgradeNotesPageTest extends PageTest
         Document html = renderUpgrade("10.11.9", "12.0");
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
-        assertEquals(List.of("11.4-rc-1", "11.4", "11.10"), html.select("h2").eachText());
-        assertEquals(List.of("Change of 11.4-rc-1", "Change of 11.4", "Another change of 11.4", "Change of 11.10"),
-            html.select("h3").eachText());
+        // The headings of the versions and the titles of their notes are of the same level, and are told apart by
+        // the class the titles of the notes carry.
+        assertEquals(List.of("11.4-rc-1", "11.4", "11.10"), html.select("h2:not(.rn-migration-change)").eachText());
+        assertEquals(List.of("11.4-rc-1", "Change of 11.4-rc-1", "11.4", "Change of 11.4", "Another change of 11.4",
+            "11.10", "Change of 11.10"), html.select("h2").eachText(), "Each version is followed by its notes.");
         assertTrue(html.text().contains("Notes of Change of 11.4"), html.text());
     }
 
@@ -299,7 +301,7 @@ class UpgradeNotesPageTest extends PageTest
         entryObject.setStringValue("type", "Migration");
         BaseObject changeObject = change.newXObject(CHANGE_CLASS, this.context);
         changeObject.setStringValue("title", title);
-        changeObject.setLargeStringValue("summary", "Notes of " + title);
+        changeObject.setLargeStringValue("description", "Notes of " + title);
         this.xwiki.saveDocument(change, this.context);
 
         return this.localSerializer.serialize(change.getDocumentReference());

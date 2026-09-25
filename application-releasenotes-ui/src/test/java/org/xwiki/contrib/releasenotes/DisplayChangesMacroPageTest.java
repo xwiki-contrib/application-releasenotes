@@ -89,7 +89,7 @@ class DisplayChangesMacroPageTest extends PageTest
 
     private static final String SUMMARY = "What the first change brings";
 
-    private static final String MIGRATION_NOTE_SUMMARY = "Delete the Solr cache before upgrading";
+    private static final String MIGRATION_NOTE_DESCRIPTION = "Delete the Solr cache before upgrading";
 
     /**
      * The translation key of the label of the link towards the page of a change, which is what a page test displays
@@ -317,7 +317,7 @@ class DisplayChangesMacroPageTest extends PageTest
      * release note template then lists as an empty entry.
      */
     @ParameterizedTest
-    @ValueSource(strings = { "simple", "list", "grid", "flow", "migrationNotes" })
+    @ValueSource(strings = { "simple", "list", "grid", "flow" })
     void changeWithNoTitleGetsNoHeadingAtAll(String displayer) throws Exception
     {
         DocumentReference change = createChange("Entry001", "", SUMMARY, "");
@@ -355,38 +355,36 @@ class DisplayChangesMacroPageTest extends PageTest
 
     /**
      * Someone reading migration notes is about to upgrade and needs to know both what a note is about and what to do:
-     * the migration notes displayer gives each note a section, titled after it with a third level heading, holding
-     * its summary.
+     * the migration notes displayer gives each note a section, titled after it with a second level heading, holding
+     * its description, which is what the form of a note fills, and not its summary.
      */
     @Test
-    void theMigrationNotesDisplayerTitlesEachNoteWithAHeading() throws Exception
+    void theMigrationNotesDisplayerTitlesEachNoteWithAHeadingAboveItsDescription() throws Exception
     {
-        DocumentReference note = createChange("Entry001", TITLE, MIGRATION_NOTE_SUMMARY, "");
+        DocumentReference note = createChange("Entry001", TITLE, SUMMARY, MIGRATION_NOTE_DESCRIPTION);
 
         Document html = render("displayer=\"migrationNotes\"", note);
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
-        assertEquals(List.of(TITLE), html.select("h3.rn-migration-change").eachText(), html.body().html());
+        assertEquals(List.of(TITLE), html.select("h2.rn-migration-change").eachText(), html.body().html());
         assertTrue(html.select("ul").isEmpty(), "The notes are sections, not list items: " + html.body().html());
-        assertTrue(html.text().contains(MIGRATION_NOTE_SUMMARY), html.text());
-        assertFalse(html.text().contains(MORE_DETAILS_KEY), "A note with no description has no details to link to.");
+        assertTrue(html.text().contains(MIGRATION_NOTE_DESCRIPTION), html.text());
+        assertFalse(html.text().contains(SUMMARY), "The summary is not part of a migration note: " + html.text());
+        assertTrue(html.select("a").isEmpty(), "The whole note is displayed, with nothing to link to.");
     }
 
     /**
-     * The steps of a migration can be long, so a note may keep them in its description, which its page displays and
-     * which its section links to.
+     * A note with no title is nothing but its description, and gets no heading holding no text at all.
      */
     @Test
-    void theMigrationNotesDisplayerLinksToTheDescription() throws Exception
+    void theMigrationNotesDisplayerGivesANoteWithNoTitleNoHeading() throws Exception
     {
-        DocumentReference note = createChange("Entry001", TITLE, MIGRATION_NOTE_SUMMARY, "The long procedure");
+        DocumentReference note = createChange("Entry001", "", SUMMARY, MIGRATION_NOTE_DESCRIPTION);
 
         Document html = render("displayer=\"migrationNotes\"", note);
 
-        Elements links = html.select("a");
-        assertEquals(List.of(MORE_DETAILS_KEY), links.eachText(), html.body().html());
-        assertTrue(links.attr("href").contains("Entry001"), links.attr("href"));
-        assertFalse(html.text().contains("The long procedure"), "The description is displayed on its page only.");
+        assertTrue(html.select("h2").isEmpty(), html.body().html());
+        assertTrue(html.text().contains(MIGRATION_NOTE_DESCRIPTION), html.text());
     }
 
     /**
@@ -399,7 +397,7 @@ class DisplayChangesMacroPageTest extends PageTest
         this.componentManager.registerComponent(ScriptService.class, "rendering",
             new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
         DocumentReference change =
-            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", MIGRATION_NOTE_SUMMARY, "");
+            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", "", MIGRATION_NOTE_DESCRIPTION);
 
         Document html = render("displayer=\"migrationNotes\"", change);
 
