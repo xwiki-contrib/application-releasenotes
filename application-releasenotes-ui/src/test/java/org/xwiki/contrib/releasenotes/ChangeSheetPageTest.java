@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet} in edit mode.
+ * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet}.
  *
  * @version $Id$
  */
@@ -156,7 +156,33 @@ class ChangeSheetPageTest extends PageTest
             renderChangeInEditMode().select("ul li").eachText());
     }
 
+    /**
+     * A migration note is added from its own button, which asks the form for a migration note entry: the form carries
+     * that type along, since saving it only stores the fields it holds, and the entry would otherwise be saved as the
+     * plain change its template makes it.
+     */
+    @Test
+    void theTypeTheEntryWasAddedWithIsCarriedByTheForm() throws Exception
+    {
+        this.request.put("type", "Migration");
+
+        Elements typeInputs =
+            renderChangeInEditMode().select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_type]");
+
+        assertEquals(List.of("Migration"), typeInputs.eachAttr("value"));
+    }
+
     private Document renderChangeInEditMode() throws Exception
+    {
+        XWikiDocument change = createChange();
+        this.xwiki.saveDocument(change, this.context);
+        this.context.setDoc(change);
+        this.context.setAction("edit");
+
+        return renderHTMLPage(change);
+    }
+
+    private XWikiDocument createChange() throws Exception
     {
         XWikiDocument change = new XWikiDocument(CHANGE);
         change.newXObject(ENTRY_CLASS, this.context);
@@ -164,11 +190,8 @@ class ChangeSheetPageTest extends PageTest
         // The sheet is included rather than applied so that the change stays the current document, which is what the
         // sheet mechanism does and what the sheet relies on to find its objects.
         change.setContent("{{include reference=\"ReleaseNotes.Code.Change.ChangeSheet\" context=\"current\"/}}");
-        this.xwiki.saveDocument(change, this.context);
-        this.context.setDoc(change);
-        this.context.setAction("edit");
 
-        return renderHTMLPage(change);
+        return change;
     }
 
     /**

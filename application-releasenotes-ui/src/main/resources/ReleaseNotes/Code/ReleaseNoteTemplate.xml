@@ -47,6 +47,10 @@
 
 {{releasenotechanges/}}
 
+= Backward Compatibility and Migration Notes =
+
+{{releasenotechanges migrationNotes="true"/}}
+
 = Credits =
 
 {{releasenotecontributors/}}</content>

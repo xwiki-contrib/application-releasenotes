@@ -1,0 +1,115 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.6" reference="ReleaseNotes.Code.Change.ChangeDisplayerMigrationNotes" locale="">
+  <web>ReleaseNotes.Code.Change</web>
+  <name>ChangeDisplayerMigrationNotes</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>ReleaseNotes.Code.Change.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>ChangeDisplayerMigrationNotes</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <enforceRequiredRights>true</enforceRequiredRights>
+  <content>{{include reference="ReleaseNotes.Code.Change.ChangeDisplayerVelocityMacros"/}}
+
+{{velocity}}
+## Inputs:
+## - $changeItems
+## - $displayEditLink
+## A migration note is read by someone about to upgrade, who needs to know what it is about and what to do: each note
+## is displayed as a section titled after it, holding its summary, and a link to the details its page holds when it
+## has a description.
+#foreach ($item in $changeItems)
+  #set ($changeDoc = $xwiki.getDocument($item))
+  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
+  #generateDisplayEditLink($displayEditLink, $changeDoc)
+  ## The title is emitted into a heading, which is wiki syntax, so it is escaped: left raw, a title carrying wiki
+  ## syntax would have it rendered, macros included.
+  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
+  ## The title of a note is optional, so a note is only given a section of its own when it has one: a heading holding
+  ## no text at all would leave an empty section in the release note, and an empty entry in its table of contents.
+  ## The edit link then follows the summary, the only thing that displays such a note.
+  #if ($title != '')
+  (% class="rn-migration-change" %)
+  == $title${displayEditLinkMarkup}==
+  #end
+  ## Display the summary through the change document, so that its rich text is rendered in the context of that
+  ## document rather than of this displayer, the way the note's own page renders it. The edit link of a note with no
+  ## title reaches the summary line through a variable rather than through a directive closing that line: Velocity
+  ## drops the newline ending a line that ends with a directive.
+  #set ($summaryEditLinkMarkup = '')
+  #if ($title == '')
+    #set ($summaryEditLinkMarkup = $displayEditLinkMarkup)
+  #end
+  $changeDoc.display('summary', 'view', $changeObject)$summaryEditLinkMarkup
+
+  #if ("$!changeObject.getValue('description')" != '')
+    [[${moreDetailsLabel}&gt;&gt;doc:$services.rendering.escape($services.model.serialize($changeDoc.documentReference, 'default'), 'xwiki/2.1')]]
+  #end
+#end
+{{/velocity}}</content>
+  <object>
+    <name>ReleaseNotes.Code.Change.ChangeDisplayerMigrationNotes</name>
+    <number>0</number>
+    <className>XWiki.RequiredRightClass</className>
+    <guid>e438357c-91cc-4e8b-8e92-2f00767eb340</guid>
+    <class>
+      <name>XWiki.RequiredRightClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <level>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <freeText>forbidden</freeText>
+        <largeStorage>0</largeStorage>
+        <multiSelect>0</multiSelect>
+        <name>level</name>
+        <number>1</number>
+        <prettyName>Level</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator> </separator>
+        <separators> ,|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>edit|script|wiki_admin|programming</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </level>
+    </class>
+    <property>
+      <level>script</level>
+    </property>
+  </object>
+</xwikidoc>

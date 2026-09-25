@@ -68,6 +68,12 @@
 {{translation key="releasenotes.home.reports.notes"/}}
 * {{translation key="releasenotes.home.reports.notes.lists"/}}
 * {{translation key="releasenotes.home.reports.notes.wildcards"/}}
+
+= {{translation key="releasenotes.home.upgrade.heading"/}} =
+
+{{translation key="releasenotes.home.upgrade.description"/}}
+
+[[{{translation key="releasenotes.home.upgrade.link"/}}&gt;&gt;ReleaseNotes.Code.UpgradeNotes]]
 </content>
   <object>
     <name>ReleaseNotes.Data.WebHome</name>

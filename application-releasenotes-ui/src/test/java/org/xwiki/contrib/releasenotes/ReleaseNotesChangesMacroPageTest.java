@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.xwiki.localization.macro.internal.TranslationMacro;
 import org.xwiki.model.reference.DocumentReference;
+import org.xwiki.model.reference.EntityReferenceSerializer;
 import org.xwiki.model.script.ModelScriptService;
 import org.xwiki.query.Query;
 import org.xwiki.query.QueryManager;
@@ -250,6 +251,84 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         assertSectionQuery(3, "administrator", WITHOUT_SCREENSHOTS, ANY_IMPORTANCE);
         assertSectionQuery(4, "developer", ANY_SCREENSHOTS, List.of("1", "2"));
         assertSectionQuery(5, "developer", ANY_SCREENSHOTS, List.of("0"));
+    }
+
+    /**
+     * Asked for its migration notes, a release note displays them instead of its changes: one query for all of them,
+     * whatever their audience, keeping only the migration note entries, and none of the queries of the changes
+     * sections.
+     */
+    @Test
+    void theMigrationNotesAreQueriedInsteadOfTheChanges() throws Exception
+    {
+        when(this.query.execute()).thenReturn(changes(0));
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertEquals(1, this.statements.size(), "Expected a single query for the migration notes: " + this.statements);
+        assertEquals(List.of("user", "administrator", "developer"), boundValues(0, "audience"),
+            "The migration notes of every audience are asked for at once.");
+        assertEquals(List.of(PRODUCT), boundValues(0, "product"));
+        assertEquals(List.of("Migration"), boundValues(0, "type"));
+        assertFalse(this.statements.get(0).contains("changes.screenshots"), this.statements.get(0));
+        assertTrue(html.text().contains("releasenotes.changes.migrationNotes.none"), html.body().html());
+    }
+
+    /**
+     * The migration notes of a release note are displayed one after the other, each titled with a third level
+     * heading, whatever the audience each of them is written for, with no heading per audience.
+     */
+    @Test
+    void theMigrationNotesAreDisplayedAsOneList() throws Exception
+    {
+        List<String> changeSpace = List.of("ReleaseNotes", "Code", "Change");
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeClass"));
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeDisplayerVelocityMacros"));
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeDisplayerMigrationNotes"));
+        WikiMacroSetup.loadWikiMacro(this, this.componentManager,
+            new DocumentReference("xwiki", changeSpace, "DisplayChangesMacro"));
+        List<Object> notes = List.of(createMigrationNote("Entry001", "An admin note", "administrator"),
+            createMigrationNote("Entry002", "A developer note", "developer"));
+        when(this.query.execute()).thenReturn(notes);
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
+        assertEquals(List.of("An admin note", "A developer note"), html.select("h3").eachText(),
+            "Expected each note titled with a third level heading: " + html.body().html());
+        assertTrue(html.select("h2").isEmpty(), "Expected no heading per audience: " + html.body().html());
+    }
+
+    /**
+     * The sections of the changes only display the changes, and leave the migration notes to their own section:
+     * otherwise every migration note would be displayed twice in a release note.
+     */
+    @Test
+    void theChangesSectionsOnlyAskForChanges() throws Exception
+    {
+        when(this.query.execute()).thenReturn(changes(0));
+
+        renderReleaseNote(100);
+
+        for (int index = 0; index < this.statements.size(); index++) {
+            assertEquals(List.of("Change"), boundValues(index, "type"));
+        }
+    }
+
+    /**
+     * A migration note is added from the migration notes section, whose button asks for an entry of the migration
+     * type, while the buttons of the changes sections leave the type to the change template.
+     */
+    @Test
+    void theMigrationNotesSectionOffersToAddAMigrationNote() throws Exception
+    {
+        registerVelocityTool("hasEdit", true);
+        when(this.query.execute()).thenReturn(changes(0));
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertEquals(List.of("migrationadd"), html.select("form input[name=action]").eachAttr("value"));
+        assertEquals(List.of("Migration"), html.select("form input[name=type]").eachAttr("value"));
     }
 
     /**
@@ -507,6 +586,21 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     private Document renderReleaseNote(String shortVersion, String version, String product, int limit)
         throws Exception
     {
+        return renderReleaseNote(shortVersion, version, product, String.format("limit=\"%s\"", limit));
+    }
+
+    /**
+     * Renders a release note whose body is the macro under test, called with the passed parameters.
+     *
+     * @param shortVersion the name of the space holding the release note
+     * @param version the value stored in the {@code version} field of the release note xobject
+     * @param product the value stored in the {@code product} field of the release note xobject
+     * @param macroParameters the parameters of the macro call
+     * @return the rendered release note
+     */
+    private Document renderReleaseNote(String shortVersion, String version, String product, String macroParameters)
+        throws Exception
+    {
         loadPage(RELEASE_NOTE_CLASS);
 
         XWikiDocument releaseNote = new XWikiDocument(new DocumentReference("xwiki",
@@ -515,12 +609,35 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         BaseObject releaseNoteObject = releaseNote.newXObject(RELEASE_NOTE_CLASS, this.context);
         releaseNoteObject.setStringValue("product", product);
         releaseNoteObject.setStringValue("version", version);
-        releaseNote.setContent(String.format("{{releasenotechanges limit=\"%s\"/}}", limit));
+        releaseNote.setContent(String.format("{{releasenotechanges %s/}}", macroParameters));
         this.xwiki.saveDocument(releaseNote, this.context);
         // The macro reads the version off the page it is on, so that page has to be the one in the context.
         this.context.setDoc(releaseNote);
 
         return renderHTMLPage(releaseNote);
+    }
+
+    /**
+     * @return the local reference of a new migration note page of the {@code 8.3} release note, the way the search
+     *         returns it
+     */
+    private String createMigrationNote(String entry, String title, String audience) throws Exception
+    {
+        DocumentReference reference =
+            new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", PRODUCT, "8.3", entry), "WebHome");
+        XWikiDocument note = new XWikiDocument(reference);
+        note.setSyntax(Syntax.XWIKI_2_1);
+        BaseObject noteObject = note.newXObject(
+            new DocumentReference("xwiki", List.of("ReleaseNotes", "Code", "Change"), "ChangeClass"), this.context);
+        noteObject.setStringValue("title", title);
+        noteObject.setLargeStringValue("summary", title + " summary");
+        noteObject.setStringValue("audience", audience);
+        this.xwiki.saveDocument(note, this.context);
+
+        EntityReferenceSerializer<String> localSerializer =
+            this.componentManager.getInstance(EntityReferenceSerializer.TYPE_STRING, "local");
+
+        return localSerializer.serialize(reference);
     }
 
     /**

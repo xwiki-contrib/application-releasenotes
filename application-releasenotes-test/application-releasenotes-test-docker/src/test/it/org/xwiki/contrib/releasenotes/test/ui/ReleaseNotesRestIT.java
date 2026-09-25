@@ -20,6 +20,7 @@
 package org.xwiki.contrib.releasenotes.test.ui;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
@@ -71,6 +72,9 @@ class ReleaseNotesRestIT
 
     private static final DocumentReference UPDATED_CHANGE = new DocumentReference("xwiki",
         List.of("ReleaseNotes", "Data", UPDATE_PRODUCT, "1.0M1", "Entry001"), "WebHome");
+
+    private static final DocumentReference MIGRATION_NOTE = new DocumentReference("xwiki",
+        List.of("ReleaseNotes", "Data", UPDATE_PRODUCT, "1.0M1", "Entry002"), "WebHome");
 
     /**
      * Walks what the endpoints exist for: one call creates the release note of a version, in the page its version
@@ -217,6 +221,7 @@ class ReleaseNotesRestIT
         // An entry left behind would be counted when the next one is numbered, so every page this test creates is
         // deleted before it runs again.
         setup.rest().delete(UPDATED_CHANGE);
+        setup.rest().delete(MIGRATION_NOTE);
         setup.rest().delete(UPDATED_RELEASE_NOTE);
 
         ReleaseNotesRestClient client = new ReleaseNotesRestClient(setup);
@@ -259,6 +264,26 @@ class ReleaseNotesRestIT
         assertEquals("A change worth a screenshot", read.getTitle());
         assertEquals(List.of("shot.png"), read.getScreenshots());
 
+        assertEquals("change", read.getType(), "A change posted with no type is a plain change.");
+
+        // A migration note is posted as an entry of its own, of the migration type, and each type is listed apart.
+        ChangeRepresentation migrationNote = new ChangeRepresentation();
+        migrationNote.setType("migration");
+        migrationNote.setTitle("Clear the cache before upgrading");
+        migrationNote.setAudience("administrator");
+
+        JsonResponse createdNote = client.post(updatePath() + "/changes", migrationNote);
+
+        assertEquals(201, createdNote.getStatus(), createdNote.getBody());
+        assertEquals("migration", createdNote.as(ChangeRepresentation.class).getType());
+        assertEquals("Migration",
+            propertyValue(setup, MIGRATION_NOTE, "ReleaseNotes.Code.EntryClass", "type"));
+        assertEquals(List.of("Entry002"), entriesOf(client.get(updatePath() + "/changes?type=migration")));
+        assertEquals(List.of("Entry001"), entriesOf(client.get(updatePath() + "/changes?type=change")));
+
+        // The entries of a version that is not released yet are not released entries.
+        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=true")));
+
         // A replacement replaces: the summary this one leaves out is emptied rather than kept, which is what a
         // client asking for the whole change to be stored asked for.
         ChangeRepresentation withoutSummary = new ChangeRepresentation();
@@ -280,6 +305,12 @@ class ReleaseNotesRestIT
         assertEquals("1", propertyValue(setup, UPDATED_RELEASE_NOTE, "ReleaseNotes.Code.ReleaseNoteClass",
             "released"));
 
+        // Once their version is released, its entries are released entries. They are listed the most important
+        // first, and the migration note holds the importance its template gives it while the change had its own
+        // emptied by the replacement above.
+        assertEquals(List.of("Entry002", "Entry001"), entriesOf(client.get(updatePath() + "/changes?released=true")));
+        assertEquals(List.of(), entriesOf(client.get(updatePath() + "/changes?released=false")));
+
         // The release note is read back at the URL it was replaced at, as the change was.
         ReleaseNoteRepresentation readNote = client.get(updatePath()).as(ReleaseNoteRepresentation.class);
 
@@ -295,6 +326,17 @@ class ReleaseNotesRestIT
         assertNotNull(noEntry.as(ErrorRepresentation.class).getMessage());
         assertEquals(404, client.put("/releasenotes/" + UPDATE_PRODUCT + "/9.9", note).getStatus());
         assertEquals(404, client.get("/releasenotes/" + UPDATE_PRODUCT + "/9.9").getStatus());
+    }
+
+    /**
+     * @return the entries of the changes the passed listing answered, in the order it answered them
+     */
+    private static List<String> entriesOf(JsonResponse listing) throws Exception
+    {
+        assertEquals(200, listing.getStatus(), listing.getBody());
+
+        return listing.as(ChangesRepresentation.class).getChanges().stream().map(ChangeRepresentation::getEntry)
+            .collect(Collectors.toList());
     }
 
     private static String changesPath()

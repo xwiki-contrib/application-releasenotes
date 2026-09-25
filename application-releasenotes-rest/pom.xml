@@ -38,7 +38,7 @@
     <xwiki.extension.category>api</xwiki.extension.category>
     <!-- The instructions that are not covered are the setters and the constructors the representations carry for
          the JSON reader of a client, which the endpoints themselves never call. -->
-    <xwiki.jacoco.instructionRatio>0.97</xwiki.jacoco.instructionRatio>
+    <xwiki.jacoco.instructionRatio>0.98</xwiki.jacoco.instructionRatio>
   </properties>
   <dependencies>
     <!-- The Java API the endpoints expose. -->
@@ -102,6 +102,40 @@
             <id>default</id>
             <configuration>
               <suppressionsLocation>${basedir}/src/checkstyle/checkstyle-suppressions.xml</suppressionsLocation>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.revapi</groupId>
+        <artifactId>revapi-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <!-- The id of the execution the build defines, so that this configuration adds to it rather
+                 than registering a second run of the checks. -->
+            <id>revapi-check</id>
+            <configuration>
+              <analysisConfiguration>
+                <revapi.differences>
+                  <differences combine.children="append">
+                    <item>
+                      <code>java.method.numberOfParametersChanged</code>
+                      <old>method org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation org.xwiki.contrib.releasenotes.rest.ChangesResource::getChanges(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, boolean, java.lang.String, java.lang.String) throws org.xwiki.contrib.releasenotes.ReleaseNotesException</old>
+                      <new>method org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation org.xwiki.contrib.releasenotes.rest.ChangesResource::getChanges(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, boolean, java.lang.String, java.lang.String) throws org.xwiki.contrib.releasenotes.ReleaseNotesException</new>
+                      <justification>The resource is @Unstable and this repository holds its only implementation. A JAX-RS resource answers a path with a single method, so the "type" and "released" query parameters can only be added to this one. REST clients are not affected: they pass query parameters by name, and the ones they already pass keep their meaning.</justification>
+                      <criticality>documented</criticality>
+                    </item>
+                    <item>
+                      <!-- The same change, reported on each parameter whose position the two added parameters shifted. -->
+                      <regex>true</regex>
+                      <code>java\.annotation\.(added|removed|attributeValueChanged)</code>
+                      <new>parameter org\.xwiki\.contrib\.releasenotes\.rest\.model\.ChangesRepresentation org\.xwiki\.contrib\.releasenotes\.rest\.ChangesResource::getChanges\(.*</new>
+                      <justification>The resource is @Unstable and gained the "type" and "released" query parameters, which shifted the position of the parameters after them. Each query parameter keeps its name, its default value and its meaning.</justification>
+                      <criticality>documented</criticality>
+                    </item>
+                  </differences>
+                </revapi.differences>
+              </analysisConfiguration>
             </configuration>
           </execution>
         </executions>

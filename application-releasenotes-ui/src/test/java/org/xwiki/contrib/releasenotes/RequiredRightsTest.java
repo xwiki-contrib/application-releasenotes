@@ -102,6 +102,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerFlow", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerGrid", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerList", SCRIPT);
+        EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerMigrationNotes", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerSimple", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerVelocityMacros", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeSheet", SCRIPT);
@@ -111,6 +112,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/HomeReleaseChanges", SCRIPT);
         EXPECTED_RIGHTS.put("Code/HomeReleaseNotes", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Report", SCRIPT);
+        EXPECTED_RIGHTS.put("Code/UpgradeNotes", SCRIPT);
         EXPECTED_RIGHTS.put("Data/WebHome", SCRIPT);
 
         EXPECTED_RIGHTS.put("Code/Change/ChangeTemplate", NOTHING);
