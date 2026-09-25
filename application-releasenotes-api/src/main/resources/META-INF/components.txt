@@ -8,4 +8,7 @@ org.xwiki.contrib.releasenotes.internal.ProductResolver
 org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentWriter
 org.xwiki.contrib.releasenotes.internal.converter.ChangeConverter
 org.xwiki.contrib.releasenotes.internal.converter.ReleaseNoteConverter
+org.xwiki.contrib.releasenotes.internal.migration.MigrationNotesImportScriptService
+org.xwiki.contrib.releasenotes.internal.migration.MigrationNotesImporter
+org.xwiki.contrib.releasenotes.internal.migration.MigrationSectionParser
 org.xwiki.contrib.releasenotes.script.ReleaseNotesScriptService

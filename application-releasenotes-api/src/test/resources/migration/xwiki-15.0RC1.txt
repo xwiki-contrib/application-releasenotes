@@ -1,0 +1,214 @@
+{{velocity}}
+#set ($rnObject = $doc.getObject('ReleaseNotes.Code.ReleaseNoteClass'))
+#set ($product = $rnObject.product)
+#set ($version = $rnObject.version)
+#set ($versionPrefix = $stringtool.substringBefore($version, '-'))
+#set ($versionParts = $stringtool.split($versionPrefix, '.'))
+#set ($isRC = $version.contains('rc'))
+#set ($isFinal = !$isRC)
+#set ($isFirstFinal = $versionParts.size() == 2 && $isFinal)
+{{/velocity}}
+
+{{box cssClass="floatinginfobox" title="**Contents**"}}
+{{toc/}}
+{{/box}}
+
+This is the release notes for [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]. They share the same release notes as they are released together and have the same version.
+
+This is the first release of the 15.x cycle. This release consists mostly of dependency upgrades and bug fixes including security fixes with some small new features for admins and developers. Some fixes also required changes that could cause breakages, please read the respective sections before upgrading.
+
+{{error}}
+The following regressions were introduced in this release (and found after it was released). Please check them out and if they impact you we recommend waiting to upgrade to a version where they are fixed.
+
+{{velocity}}
+#if ($isFirstFinal)
+  #set ($affectedVersions = "${version}-rc-1, ${version}")
+  #set ($fixVersionJQL = " and (fixVersion != ${version}-rc-1 or fixVersion is empty)")
+#else
+  #set ($affectedVersions = "${version}")
+  #set ($fixVersionJQL = "")
+#end
+{{jira id="xwikiorg" source="jql"}}
+category = 10000 and affectedVersion in ($affectedVersions)${fixVersionJQL}and priority = Blocker and resolution in (Fixed, Unresolved) and component != "Development Issues only"
+{{/jira}}
+{{/velocity}}
+{{/error}}
+
+= New and Noteworthy (since {{velocity}}$product{{/velocity}} 14.10.2) =
+
+[[Full list of issues fixed and Dashboard for 15.0>>https://jira.xwiki.org/secure/Dashboard.jspa?selectPageId=15300]].
+
+{{releasenotechanges/}}
+
+{{comment}}
+
+=== Moved Modules ===
+
+<description deprecated, retired and moved projects>
+{{/comment}}
+
+=== Upgrades ===
+
+The following runtime dependencies have been upgraded (they have a different release cycle than [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]):
+
+* [[Vue 2.7.14>>https://jira.xwiki.org/browse/XWIKI-20417]]
+* [[Vue-i18n 8.28.2>>https://jira.xwiki.org/browse/XWIKI-20418]]
+* [[Dompurify 2.4.1>>https://jira.xwiki.org/browse/XWIKI-20419]]
+* [[CKEditor 4.20.1>>https://jira.xwiki.org/browse/XWIKI-20489]]
+* [[JGroups 5.2.11>>https://jira.xwiki.org/browse/XCOMMONS-2004]]
+* [[Caffeine 3.1.2>>https://jira.xwiki.org/browse/XCOMMONS-2147]]
+* [[SLF4J 2.0.6 and Logback 1.3.5>>https://jira.xwiki.org/browse/XCOMMONS-2517]]
+* [[Infinispan 14.0.5>>https://jira.xwiki.org/browse/XCOMMONS-2545]]
+* [[Jackson 2.14.1>>https://jira.xwiki.org/browse/XCOMMONS-2574]]
+* [[Plexus Classworlds 2.7.0>>https://jira.xwiki.org/browse/XCOMMONS-2575]]
+* [[Byte Buddy 1.12.22>>https://jira.xwiki.org/browse/XCOMMONS-2576]]
+* [[HTTP Core 4.4.16>>https://jira.xwiki.org/browse/XCOMMONS-2581]]
+* [[Protobuf Java 3.21.12>>https://jira.xwiki.org/browse/XCOMMONS-2582]]
+* [[Checker Qual 3.29.0>>https://jira.xwiki.org/browse/XCOMMONS-2584]]
+* [[Commons Net 3.9.0>>https://jira.xwiki.org/browse/XCOMMONS-2585]]
+* [[httpclient 4.5.14>>https://jira.xwiki.org/browse/XCOMMONS-2587]]
+* [[Jaxen 2.0.0>>https://jira.xwiki.org/browse/XCOMMONS-2588]]
+* [[Protostream 4.6.0.Final>>https://jira.xwiki.org/browse/XCOMMONS-2589]]
+* [[httpclient 5.2.1>>https://jira.xwiki.org/browse/XCOMMONS-2591]]
+* [[Groovy 3.0.14>>https://jira.xwiki.org/browse/XCOMMONS-2593]]
+* [[AspectJ 1.9.19>>https://jira.xwiki.org/browse/XCOMMONS-2594]]
+* [[cssparser 0.9.30>>https://jira.xwiki.org/browse/XCOMMONS-2595]]
+* [[Error Prone annotations 2.18.0>>https://jira.xwiki.org/browse/XCOMMONS-2598]]
+* [[Plexus Archiver 4.6.1>>https://jira.xwiki.org/browse/XCOMMONS-2599]]
+* [[Closure Compiler v20230103>>https://jira.xwiki.org/browse/XCOMMONS-2601]]
+* [[Gson 2.10.1>>https://jira.xwiki.org/browse/XCOMMONS-2603]]
+* [[Woodstox 6.5.0>>https://jira.xwiki.org/browse/XCOMMONS-2609]]
+* [[Doxia 1.12.0>>https://jira.xwiki.org/browse/XRENDERING-698]]
+* [[jodconverter 4.4.5>>https://jira.xwiki.org/browse/XWIKI-20137]]
+* [[Tika 2.6.0>>https://jira.xwiki.org/browse/XWIKI-20201]]
+* [[Docker Java to 3.2.14>>https://jira.xwiki.org/browse/XWIKI-20412]]
+* [[PostgresSQL connector 42.5.1>>https://jira.xwiki.org/browse/XWIKI-20413]]
+* [[JNR POSIX 3.1.16>>https://jira.xwiki.org/browse/XWIKI-20414]]
+* [[JNR Constants 0.10.4>>https://jira.xwiki.org/browse/XWIKI-20415]]
+* [[Joda-Time 2.12.2>>https://jira.xwiki.org/browse/XWIKI-20441]]
+* [[Netty 4.1.86.Final>>https://jira.xwiki.org/browse/XWIKI-20473]]
+* [[Syntax higlighting 4.6.1>>https://jira.xwiki.org/browse/XWIKI-20505]]
+* [[Tour Application 1.3.6>>https://jira.xwiki.org/browse/XWIKI-20506]]
+* [[Templates Application v1.0.8>>https://jira.xwiki.org/browse/XWIKI-20507]]
+* [[embedded Maven to 3.8.7>>https://jira.xwiki.org/browse/XWIKI-20512]]
+* [[pagedjs to 0.4.0>>https://jira.xwiki.org/browse/XWIKI-20542]]
+* [[JNA 5.13.0>>https://jira.xwiki.org/browse/XWIKI-20558]]
+* [[Netty 4.1.87.Final>>https://jira.xwiki.org/browse/XWIKI-20559]]
+* [[MariaDB connector 3.1.1>>https://jira.xwiki.org/browse/XWIKI-20560]]
+
+= Translations =
+
+The following translations have been updated: 
+
+{{language codes="de,ja,ro"/}}
+
+= Tested Browsers & Databases =
+
+{{include reference="TestReports.ManualTestReportSummaryXWiki150.WebHome"/}}
+
+{{comment}}
+TODO: uncomment and update with proper links when the report is ready.
+
+= Performances tests compared to <last super stable version> =
+
+{{display reference="test:Performances.Jetty HSQLDB single wiki xxx to yyy" section="HSummary"/}}
+
+More details on [[performance comparison on single wiki between x.x and y.y>>test:Performances.Jetty HSQLDB single wiki xxx to yyy]].
+{{/comment}}
+
+= Known issues =
+
+* [[Bugs we know about>>https://jira.xwiki.org/issues/?jql=category%20%3D%2010000%20AND%20issuetype%20%3D%20Bug%20AND%20resolution%20%3D%20Unresolved%20ORDER%20BY%20updated%20DESC]]
+
+= Backward Compatibility and Migration Notes =
+
+== General Notes ==
+
+* When upgrading make sure you compare and merge the following XWiki configuration files since some parameters may have been modified, removed or added:
+** ##xwiki.cfg##
+** ##xwiki.properties##
+** ##web.xml##
+** ##hibernate.cfg.xml##
+* Add ##xwiki.store.migration=1## in ##xwiki.cfg## so that XWiki will attempt to automatically migrate your current database to any new schema. Make sure you backup your Database before doing anything.
+
+== Issues specific to {{velocity}}$product $version{{/velocity}} ==
+
+=== Change of macro priorities ===
+
+The priority of the following macros has been changed from very high (10) to normal (1000):
+
+* ##include##
+* ##display##
+* ##context##
+* ##template##
+* ##uiextension##
+* ##uiextensions##
+
+It means they have the same priority that most other macros so they will be executed in the order you see them in the wiki content instead of before previous macros, it's especially important when combined with script macros.
+
+This hopefully fixes more confusion than causing problems but it could impact cases like:
+
+* if you include a document which contains macro which a very high priority, those macros used to be executed very early and they are now limited by the priority of the include macro
+* (((
+if you were including things to use in a script macro after that script macro, it won't work anymore:
+
+{{code}}
+{{velocity}}
+  #macroFromTheTemplate('value')
+{{/velocity}}
+
+{{template name="template/with/macros.vm"/}}
+{{/code}}
+
+doesn't behave as expected anymore and should instead be written as
+
+
+{{code}}
+{{template name="template/with/macros.vm"/}}
+
+{{velocity}}
+  #macroFromTheTemplate('value')
+{{/velocity}}
+{{/code}}
+
+because in the first version the velocity macro is going to be executed before the template macro (because it appear first in the content).
+)))
+
+=== Change of default author when executing the include macro ===
+
+For security reasons, it was decided to modify the default behavior of the include macro regarding the execution of the included content: if the content author of the target document does not have programming rights, the include macro will execute it right away with the right of the target document content author instead of just parsing it and returning the blocks.
+
+=== Change of behavior for ##ComponentManager#getInstanceList## ===
+
+##org.xwiki.component.manager.ComponentManager#getInstanceList## and ##org.xwiki.component.manager.ComponentManager#getInstanceMap## don't fail anymore by default, if one of the components fail to initialize. However, it's possible to still thrown an exception if needed, by using the ##@ComponentMandatory## annotation, either on the component class, or at a higher level in the inheritance hierarchy (e.g. inside the role class), to impact all components who are a subclass of it.
+
+== API Breakages ==
+
+The following APIs were modified since {{velocity}}$product{{/velocity}} 14.10.2:
+
+{{velocity}}
+{{backwardCompatibilityReport134 version="$version"/}}
+{{/velocity}}
+
+= Credits =
+
+The following people have contributed code and translations to this release (sorted alphabetically):
+
+* Alex Cotiugă
+* Andreea Chirica
+* Antoine Mottier
+* DenisF
+* Jens Mittelbach
+* Manuel Leduc
+* Marius Dumitru Florea
+* Michael Hamann
+* Nikita Petrenko
+* Oana-Lavinia Florean
+* Raphaël Jakse
+* Simon Urli
+* Simpel
+* Suguru Hirahara
+* Thomas Mortagne
+* Vincent Massol
+* tambovtsev
+* trrenty

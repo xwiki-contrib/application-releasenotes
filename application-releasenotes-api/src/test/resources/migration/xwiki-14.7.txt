@@ -1,0 +1,155 @@
+{{velocity}}
+#set ($rnObject = $doc.getObject('ReleaseNotes.Code.ReleaseNoteClass'))
+#set ($product = $rnObject.product)
+#set ($version = $rnObject.version)
+#set ($versionPrefix = $stringtool.substringBefore($version, '-'))
+#set ($versionParts = $stringtool.split($versionPrefix, '.'))
+#set ($isRC = $version.contains('rc'))
+#set ($isFinal = !$isRC)
+#set ($isFirstFinal = $versionParts.size() == 2 && $isFinal)
+{{/velocity}}
+
+{{box cssClass="floatinginfobox" title="**Contents**"}}
+{{toc/}}
+{{/box}}
+
+This is the release notes for [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]. They share the same release notes as they are released together and have the same version.
+
+This release focuses on stability, security and performance improvements, but also includes a few improvements for developers as well as admins.
+
+{{comment}}Uncomment when there's at least one issue listed in the table!
+{{error}}
+The following regressions were introduced in this release (and found after it was released). Please check them out and if they impact you we recommend waiting to upgrade to a version where they are fixed.
+
+{{velocity}}
+#if ($isFirstFinal)
+  #set ($affectedVersions = "${version}-rc-1, ${version}")
+  #set ($fixVersionJQL = " and (fixVersion != ${version}-rc-1 or fixVersion is empty)")
+#else
+  #set ($affectedVersions = "${version}")
+  #set ($fixVersionJQL = "")
+#end
+{{jira id="xwikiorg" source="jql"}}
+category = 10000 and affectedVersion in ($affectedVersions)${fixVersionJQL}and priority = Blocker and resolution in (Fixed, Unresolved) and component != "Development Issues only"
+{{/jira}}
+{{/velocity}}
+{{/error}}{{/comment}}
+  
+
+= New and Noteworthy (since {{velocity}}$product{{/velocity}} 14.6) =
+
+[[Full list of issues fixed and Dashboard for 14.7>>https://jira.xwiki.org/secure/Dashboard.jspa?selectPageId=15098]].
+
+{{releasenotechanges/}}
+
+=== Moved Modules ===
+
+* The [[Formula Macro>>extensions:Extension.Formula.Formula Macro.WebHome]] has been extracted out of XWiki Standard and is now a contrib extension. See below for backward-compatibility considerations.
+
+=== Upgrades ===
+
+The following runtime dependencies have been upgraded (they have a different release cycle than [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]):
+
+* [[java-diff-utils 4.12>>https://jira.xwiki.org/browse/XCOMMONS-2481]]]
+* [[Woodstox 6.3.1>>https://jira.xwiki.org/browse/XCOMMONS-2494]]
+* [[Tour Application 1.3.5>>https://jira.xwiki.org/browse/XWIKI-20061]]
+* [[Protobuf Java 3.21.5>>https://jira.xwiki.org/browse/XCOMMONS-2470]]
+* [[PostgresSQL connector 42.4.1>>https://jira.xwiki.org/browse/XWIKI-20057]]
+* [[Netty 4.1.79.Final>>https://jira.xwiki.org/browse/XWIKI-20027]]
+* [[MySQL connector 8.0.30>>https://jira.xwiki.org/browse/XWIKI-20026]]
+* [[MariaDB connector 3.0.7>>https://jira.xwiki.org/browse/XWIKI-20056]]
+* [[Joda-Time 2.11.0>>https://jira.xwiki.org/browse/XWIKI-20066]]
+* [[Jetty Client 9.4.48.v20220622>>https://jira.xwiki.org/browse/XWIKI-20050]]
+* [[Javassist 3.29.1-GA>>https://jira.xwiki.org/browse/XCOMMONS-2493]]
+* [[Hibernate Validator 6.2.4.Final>>https://jira.xwiki.org/browse/XCOMMONS-2488]]
+* [[HSQLDB 2.7.0>>https://jira.xwiki.org/browse/XWIKI-20035]]
+* [[Gson 2.9.1>>https://jira.xwiki.org/browse/XCOMMONS-2484]]
+* [[Goovy 3.0.12>>https://jira.xwiki.org/browse/XCOMMONS-2467]]
+* [[Error Prone annotations 2.15.0>>https://jira.xwiki.org/browse/XCOMMONS-2490]]
+* [[Closure Compiler v20220803>>https://jira.xwiki.org/browse/XCOMMONS-2471]]
+* [[Checker Qual 3.24.0>>https://jira.xwiki.org/browse/XCOMMONS-2474]]
+* [[CKEditor 4.19.1>>https://jira.xwiki.org/browse/XWIKI-20048]]
+* [[Byte Buddy 1.12.13>>https://jira.xwiki.org/browse/XWIKI-20048]]
+
+= Translations =
+
+The following translations have been updated: 
+
+{{language codes="de, fr, uk"/}}
+
+= Tested Browsers & Databases =
+
+{{include reference="TestReports.ManualTestReportSummaryXWiki147.WebHome"/}}
+
+{{comment}}
+TODO: uncomment and update with proper links when the report is ready.
+
+= Performances tests compared to <last super stable version> =
+
+{{display reference="test:Performances.Jetty HSQLDB single wiki xxx to yyy" section="HSummary"/}}
+
+More details on [[performance comparison on single wiki between x.x and y.y>>test:Performances.Jetty HSQLDB single wiki xxx to yyy]].
+{{/comment}}
+
+= Known issues =
+
+* [[Bugs we know about>>https://jira.xwiki.org/issues/?jql=category%20%3D%2010000%20AND%20issuetype%20%3D%20Bug%20AND%20resolution%20%3D%20Unresolved%20ORDER%20BY%20updated%20DESC]]
+
+= Backward Compatibility and Migration Notes =
+
+== General Notes ==
+
+* When upgrading make sure you compare and merge the following XWiki configuration files since some parameters may have been modified, removed or added:
+** ##xwiki.cfg##
+** ##xwiki.properties##
+** ##web.xml##
+** ##hibernate.cfg.xml##
+* Add ##xwiki.store.migration=1## in ##xwiki.cfg## so that XWiki will attempt to automatically migrate your current database to any new schema. Make sure you backup your Database before doing anything.
+
+== Issues specific to {{velocity}}$product $version{{/velocity}} ==
+
+=== Removal of Formula Macro ===
+
+It was decided that the [[Formula Macro>>extensions:Extension.Formula.Formula Macro.WebHome]] was not a core extension and should not present by default in XWiki Standard. This was mostly motivated by the fact that there's a [[MathJax Macro>>extensions:Extension.MathJax.MathJaxMacro.WebHome]] offering similar features and we would like to promote it more over the Formula Macro as we think it provides a nicer visual result (amongst other features).
+
+Thus when upgrading to XWiki 14.7+, the Formula macro will be removed from your wiki and you'll need to reinstall it (using a version >= 14.7) using the Extension Manager.
+
+If you're a extension developer, this change can bring some small backward-compatibility issues:
+
+* The ##PDFURIResolver## legacy class was removed
+* The ##TexAction## class was removed
+* The ##ImageData## and ##ImageStorage## classes were moved to the Formula Macro contrib extension
+
+See [[this forum discussion>>https://forum.xwiki.org/t/what-do-we-do-with-mathjax-macro-vs-formula-macro-in-xs/10481]] for more details.
+
+=== Escaping of ##{## in XML context ===
+
+For security reasons it was decided to also escape the character ##{## in ##XWikiUtils#escapeElementText## and the various Document#display APIs. It should not have any impact unless you use APIs like ##$doc.myfield## and expecting it to return a value which is a very bad practice since this API is actually a displayer and ###getValue('myfield')## should be preferred for this need.
+
+== API Breakages ==
+
+The following APIs were modified since {{velocity}}$product{{/velocity}} 14.6:
+
+{{velocity}}
+{{backwardCompatibilityReport134 version="$version"/}}
+{{/velocity}}
+
+= Credits =
+
+The following people have contributed code and translations to this release (sorted alphabetically):
+
+Alex Cotiugă
+Andreea Chirica
+Clément Aubin
+Eduard Moraru
+Manuel Leduc
+Marius Dumitru Florea
+Michael Hamann
+Nikita Petrenko
+Oana-Lavinia Florean
+Pascal BASTIEN
+Simon Urli
+Simpel
+Thomas Mortagne
+Vincent Massol
+slauriere

@@ -224,6 +224,28 @@ releasenotes.upgrade.invalidRange=The version to upgrade to must come after the 
 releasenotes.upgrade.notReleased=The version {0} is not released yet, so its backward compatibility and migration notes are not shown.
 releasenotes.upgrade.none=No backward compatibility or migration notes between these versions.
 releasenotes.upgrade.truncated=There are more notes between these versions than the ones displayed here. Narrow the range of versions to display them all.
+
+# Import of the backward compatibility and migration notes written in the content of the release notes
+releasenotes.admin.migrationImport.description=The backward compatibility and migration notes written in the content of the release notes, the way the release notes of xwiki.org write them, can be moved to migration note entries.
+releasenotes.admin.migrationImport.link=Import the migration notes
+releasenotes.migrationImport.notAllowed=Importing the migration notes rewrites release notes across the whole wiki, and cannot be undone. Only a wiki administrator can run it.
+releasenotes.migrationImport.description=Moves the notes of the "Issues specific" subsection of the "Backward Compatibility and Migration Notes" section of each release note of a product to migration note entries, and replaces that subsection with the list of those entries. Preview what the import would do before running it: what it cannot move is left in place and listed below, to migrate by hand.
+releasenotes.migrationImport.product.label=Product
+releasenotes.migrationImport.preview=Preview
+releasenotes.migrationImport.run=Import
+releasenotes.migrationImport.failed=The import could not read the release notes: {0}
+releasenotes.migrationImport.summary={0} notes to move to migration note entries, in {1} release notes to rewrite. {2} release notes are already migrated.
+releasenotes.migrationImport.done={0} migration note entries created, {1} release notes rewritten.
+releasenotes.migrationImport.error=This release note could not be migrated: {0}
+releasenotes.migrationImport.notes=Moved to migration note entries:
+releasenotes.migrationImport.duplicates=Left out, since a milestone or a release candidate of the same version holds them already:
+releasenotes.migrationImport.leftovers=Left in place, to migrate by hand:
+releasenotes.migrationImport.leftover.UNTITLED_TEXT=Text under no note title
+releasenotes.migrationImport.leftover.NON_STANDARD_HEADING=A subsection of its own
+releasenotes.migrationImport.leftover.SCRIPT_MACRO=A note running a script
+releasenotes.migrationImport.leftover.UNRESOLVED_LINK=A note linking to its own release note in a way the import does not handle
+releasenotes.migrationImport.leftover.EMPTY_TITLE=A note whose title is empty as plain text
+releasenotes.migrationImport.nothing=No release note of this product has anything to import.
 </content>
   <object>
     <name>ReleaseNotes.Code.Translations</name>

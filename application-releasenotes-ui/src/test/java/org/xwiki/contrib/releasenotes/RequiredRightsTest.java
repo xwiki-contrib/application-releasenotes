@@ -97,6 +97,7 @@ class RequiredRightsTest extends PageTest
         // page tests for wiki administration in its own content and then writes across the whole wiki, and script
         // right is no protection against the user who can rewrite that check — one who holds script right.
         EXPECTED_RIGHTS.put("Code/MigrationFrom1x", WIKI_ADMIN);
+        EXPECTED_RIGHTS.put("Code/MigrationNotesImport", WIKI_ADMIN);
 
         EXPECTED_RIGHTS.put("Code/Change/ChangeClass", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerFlow", SCRIPT);

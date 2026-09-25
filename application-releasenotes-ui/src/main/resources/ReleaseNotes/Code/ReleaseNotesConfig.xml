@@ -325,7 +325,9 @@
       <categoryIcon/>
     </property>
     <property>
-      <codeToExecute/>
+      <codeToExecute>{{translation key="releasenotes.admin.migrationImport.description"/}}
+
+[[{{translation key="releasenotes.admin.migrationImport.link"/}}&gt;&gt;ReleaseNotes.Code.MigrationNotesImport]]</codeToExecute>
     </property>
     <property>
       <configurationClass>ReleaseNotes.Code.ReleaseNotesConfigClass</configurationClass>

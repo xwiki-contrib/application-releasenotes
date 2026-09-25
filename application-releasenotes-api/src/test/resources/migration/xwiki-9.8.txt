@@ -1,0 +1,94 @@
+{{box cssClass="floatinginfobox" title="**Contents**"}}
+{{toc/}}
+{{/box}}
+
+This is the release notes for [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]], [[XWiki Platform>>http://platform.xwiki.org]] and [[XWiki Enterprise>>http://enterprise.xwiki.org]]. They share the same release notes as they are released together and have the same version.
+
+This release introduces a new feature for the Notifications: Watched Entities. It is an experimental feature that will soon replace the [[Watchlist Application>>extensions:Extension.Watchlist Application]]. To try it out and get familiar with it, you need to enable it, since it is currently disabled by default.
+
+For users, we now have more usable notification filter settings, a nice helper when you edit a "Database List" field and a feature that was missing from the CKEditor integration, which is office import.
+
+For developers, it is easier to propose an extension containing REST resources, or to customize the Flamingo LESS code. We have also exposed more database columns in the Query Module for users who don't have programming rights. The notification filters AST (Abstract Syntax Tree) proposes new types of nodes to create complex filter queries. There are also new facilities to avoid using SyntaxFactory, to make Extension Manager faster, or to have more control over some skin elements (CSS IDs and layout variables).
+
+= New and Noteworthy (since XWiki 9.7) =
+
+[[Full list of issues fixed and Dashboard for 9.8>>https://jira.xwiki.org/secure/Dashboard.jspa?selectPageId=13916]].
+
+{{releasenotechanges/}}
+
+=== Upgrades ===
+
+The following runtime dependencies have been upgraded (they have a different release cycle than [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]], [[XWiki Platform>>http://platform.xwiki.org]] and [[XWiki Enterprise>>http://enterprise.xwiki.org]]):
+
+* [[CKEditor Integration 1.17>>https://jira.xwiki.org/browse/XWIKI-14723]]
+* [[CSS4J 0.36>>https://jira.xwiki.org/browse/XWIKI-14684]]
+* [[Jackson 2.9.1>>https://jira.xwiki.org/browse/XCOMMONS-1254]]
+* [[Restlet 2.3.10>>https://jira.xwiki.org/browse/XWIKI-14678]]
+* [[org.osgi.core 6.0.0>>https://jira.xwiki.org/browse/XCOMMONS-1250]]
+* [[Commons Configuration 2.1.1>>https://jira.xwiki.org/browse/XCOMMONS-1231]]
+* [[Bouncy Castle 1.58>>https://jira.xwiki.org/browse/XCOMMONS-1244]]
+
+= Translations =
+
+The following translations have been updated: 
+
+{{language codes="hr, de, pl"/}}
+
+= Tested Browsers & Databases =
+
+{{include reference="TestReports.ManualTestReportSummaryXWiki98.WebHome"/}}
+
+{{comment}}
+TODO: uncomment and update with proper links when the report is ready.
+
+= Performances tests compared to <last super stable version> =
+
+<a summary of the comparison with latest super stable version>
+
+More details on <link to the test report>.
+{{/comment}}
+
+= Known issues =
+
+* [[Bugs we know about>>https://jira.xwiki.org/issues/?jql=category%20%3D%2010000%20AND%20issuetype%20%3D%20Bug%20AND%20resolution%20%3D%20Unresolved%20ORDER%20BY%20updated%20DESC]]
+
+= Backward Compatibility and Migration Notes =
+
+== General Notes ==
+
+When upgrading make sure you compare your ##xwiki.cfg##, ##xwiki.properties## and ##web.xml## files with the newest version since some configuration parameters may have been modified or added. Note that you should add ##xwiki.store.migration=1## so that XWiki will attempt to automatically migrate your current database to the new schema. Make sure you backup your Database before doing anything.
+
+== Database List Property Values ==
+
+We fixed a few security issues around Database List properties by:
+
+* restricting the type of explicit query you can use on the Database List definition based on the class author rights
+* evaluating the Velocity code from the explicit query only if the class author has script right
+* checking if the current user has the right to view the returned values (when implicit query is used)
+
+This may break existing applications if they use Database List properties and the last author of the class that holds the property definition doesn't have sufficient rights.
+
+== Changes in the way the ##$docextra## variable works ==
+
+If, prior to 9.8, you were using the ##$docextra## variable to hide the document tags and creator/creation-date or to hide the viewers section in the "More actions" content menu, please be advised that it will not work as expected anymore. Please read above, in this release notes, how ##$displayContentFooter##, ##$displayDocExtra## and/or ##$displayShortcuts## should be used instead.
+
+== API Breakages ==
+
+The following APIs were modified since XWiki 9.7:
+
+{{backwardCompatiblityReport version="9.8"/}}
+
+= Credits =
+
+The following people have contributed code to this release (sorted alphabetically):
+
+* Anca Luca
+* Clément Aubin
+* Ecaterina Moraru (Valica)
+* Eduard Moraru
+* Guillaume Delhumeau
+* Marius Dumitru Florea
+* Pascal B
+* Sergiu Dumitriu
+* Thomas Mortagne
+* Vincent Massol

@@ -1,0 +1,179 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.6" reference="ReleaseNotes.Code.MigrationNotesImport" locale="">
+  <web>ReleaseNotes.Code</web>
+  <name>MigrationNotesImport</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>ReleaseNotes.Code.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>Import of the Migration Notes</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <enforceRequiredRights>true</enforceRequiredRights>
+  <content>{{velocity}}
+## The import rewrites release notes across the wiki and cannot be undone, so administering the wiki is what it
+## takes to run it, and to see what it would do. The script service checks it too; the check is also made here so that
+## the form is not offered to someone who cannot use it. The document enforces wiki_admin as a required right: that is
+## what refuses edit on this page to anyone who does not already hold the right the check tests for.
+#set ($hasWikiAdmin = $services.security.authorization.hasAccess('admin', $doc.documentReference.wikiReference))
+#if (!$hasWikiAdmin)
+{{error}}{{translation key="releasenotes.migrationImport.notAllowed"/}}{{/error}}
+#else
+#set ($product = $stringtool.trim("$!request.product"))
+#if ($product == '')
+  #set ($product = "$!services.releasenotes.getDefaultProduct()")
+#end
+## The import only runs on a request carrying a valid form token; any other request only previews it, which writes
+## nothing.
+#set ($run = ("$!request.action" == 'import' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token'))))
+{{translation key="releasenotes.migrationImport.description"/}}
+
+{{html clean="false"}}
+&lt;form class="form-inline" method="post" action="$escapetool.xml($doc.getURL('view'))"&gt;
+  &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
+  &lt;div class="form-group"&gt;
+    &lt;label for="migration-import-product"&gt;$escapetool.xml($services.localization.render('releasenotes.migrationImport.product.label'))&lt;/label&gt;
+    &lt;input id="migration-import-product" class="form-control" type="text" name="product" value="$escapetool.xml($product)" size="20" required="required"/&gt;
+  &lt;/div&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;button class="button secondary" type="submit" name="action" value="preview"&gt;$escapetool.xml($services.localization.render('releasenotes.migrationImport.preview'))&lt;/button&gt;
+  &lt;/span&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;button class="button" type="submit" name="action" value="import"&gt;$escapetool.xml($services.localization.render('releasenotes.migrationImport.run'))&lt;/button&gt;
+  &lt;/span&gt;
+&lt;/form&gt;
+{{/html}}
+
+#if ("$!request.action" != '' &amp;&amp; $product != '')
+  #try('importException')
+    #if ($run)
+      #set ($report = $services.releasenotesMigrationImport.importNotes($product))
+    #else
+      #set ($report = $services.releasenotesMigrationImport.preview($product))
+    #end
+  #end
+  #if ($importException)
+    {{error}}$services.localization.render('releasenotes.migrationImport.failed', [$services.rendering.escape("$!importException.message", 'xwiki/2.1')]){{/error}}
+
+  #else
+    #if ($run)
+      #set ($created = 0)
+      #set ($rewritten = 0)
+      #foreach ($item in $report.releaseNotes)
+        #set ($created = $created + $item.createdEntries.size())
+        #if ($item.rewritten)
+          #set ($rewritten = $rewritten + 1)
+        #end
+      #end
+      (% class="box successmessage" %)((($services.localization.render('releasenotes.migrationImport.done', [$created, $rewritten]))))
+    #else
+      (% class="box infomessage" %)((($services.localization.render('releasenotes.migrationImport.summary', [$report.noteCount, $report.rewriteCount, $report.alreadyMigrated]))))
+    #end
+
+    #foreach ($item in $report.releaseNotes)
+      ## The version and the titles are data of the release notes, emitted into wiki syntax, so they are escaped.
+      #set ($escapedVersion = $services.rendering.escape($item.version, 'xwiki/2.1'))
+      #set ($escapedReference = $services.rendering.escape($services.model.serialize($item.reference, 'default'), 'xwiki/2.1'))
+== [[$escapedVersion&gt;&gt;doc:$escapedReference]] ==
+
+      #if ("$!item.error" != '')
+(% class="box errormessage" %)((($services.localization.render('releasenotes.migrationImport.error', [$services.rendering.escape($item.error, 'xwiki/2.1')]))))
+
+      #end
+      #if (!$item.notes.isEmpty())
+{{translation key="releasenotes.migrationImport.notes"/}}
+
+        #foreach ($note in $item.notes)
+* $services.rendering.escape($note.title, 'xwiki/2.1')
+        #end
+
+      #end
+      #if (!$item.duplicates.isEmpty())
+{{translation key="releasenotes.migrationImport.duplicates"/}}
+
+        #foreach ($duplicate in $item.duplicates)
+* $services.rendering.escape($duplicate, 'xwiki/2.1')
+        #end
+
+      #end
+      #if (!$item.leftovers.isEmpty())
+{{translation key="releasenotes.migrationImport.leftovers"/}}
+
+        #foreach ($leftover in $item.leftovers)
+* $services.localization.render("releasenotes.migrationImport.leftover.${leftover.kind}")~: $services.rendering.escape($leftover.text, 'xwiki/2.1')
+        #end
+
+      #end
+    #end
+    #if ($report.releaseNotes.isEmpty())
+{{translation key="releasenotes.migrationImport.nothing"/}}
+    #end
+  #end
+#end
+#end
+{{/velocity}}</content>
+  <object>
+    <name>ReleaseNotes.Code.MigrationNotesImport</name>
+    <number>0</number>
+    <className>XWiki.RequiredRightClass</className>
+    <guid>74624425-81cc-4088-9295-44e5582af78a</guid>
+    <class>
+      <name>XWiki.RequiredRightClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <level>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <freeText>forbidden</freeText>
+        <largeStorage>0</largeStorage>
+        <multiSelect>0</multiSelect>
+        <name>level</name>
+        <number>1</number>
+        <prettyName>Level</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator> </separator>
+        <separators> ,|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>edit|script|wiki_admin|programming</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </level>
+    </class>
+    <property>
+      <level>wiki_admin</level>
+    </property>
+  </object>
+</xwikidoc>

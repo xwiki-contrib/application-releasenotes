@@ -1,0 +1,195 @@
+{{velocity}}
+#if ($doc.getValue('released') != 1)
+  {{warning}}This version has not yet been released.{{/warning}}
+#end
+{{/velocity}}
+
+{{velocity}}
+#set ($rnObject = $doc.getObject('ReleaseNotes.Code.ReleaseNoteClass'))
+#set ($product = $rnObject.product)
+#set ($version = $rnObject.version)
+#set ($versionPrefix = $stringtool.substringBefore($version, '-'))
+#set ($versionParts = $stringtool.split($versionPrefix, '.'))
+#set ($isRC = $version.contains('rc'))
+#set ($isFinal = !$isRC)
+#set ($isFirstFinal = $isFinal && ($versionParts.size() == 2 || $versionParts[2] == 0))
+#set ($isBugFix = $isFinal && $versionParts.size() == 3 && $versionParts[2] > 0)
+{{/velocity}}
+
+{{box cssClass="floatinginfobox" title="**Contents**"}}
+{{toc/}}
+{{/box}}
+
+This is the release notes for [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]. They share the same release notes as they are released together and have the same version.
+
+This release introduces the capability for users to toggle the panel columns to improve usability and navigation, and for admins to define the required rights of pages for better security. On top of that, a few macros have been improved for developers and Live Data now runs with Vue 3. This release also contains security fixes, with the [[highest severity being 9.3>>doc:dev:Community.SecurityPolicy.WebHome||anchor="HSeverity"]].
+
+{{velocity}}
+{{jiraBlockersFor version="$version" id="xwikiorg"/}}
+{{/velocity}}
+
+= New and Noteworthy (since {{velocity}}$product{{/velocity}} 17.3.0) =
+
+[[Full list of issues fixed and Dashboard for 17.4.0>>https://jira.xwiki.org/secure/Dashboard.jspa?selectPageId=16099]].
+
+{{velocity}}
+#if ($isBugFix)
+  {{jira style="list" url="https://jira.xwiki.org" fields="type, status, key, summary" source="jql"}}
+  resolution in (Fixed, "Solved By") AND component != "Development Issues only" and component != "Development Issues only - Test" AND project in (XCOMMONS, XRENDERING, XWIKI) AND fixVersion in ($version)
+  {{/jira}}
+#else
+  {{releasenotechanges/}}
+#end
+{{/velocity}}
+
+=== Upgrades ===
+
+The following runtime dependencies have been upgraded (they have a different release cycle than [[XWiki Commons>>http://commons.xwiki.org]], [[XWiki Rendering>>http://rendering.xwiki.org]] and [[XWiki Platform>>http://platform.xwiki.org]]):
+
+{{velocity}}
+#if ($isFirstFinal)
+  #set ($affectedVersions = "${version}-rc-1, ${version}")
+#else
+  #set ($affectedVersions = "${version}")
+#end
+{{jira url="https://jira.xwiki.org" source="jql" style="list"}}
+project in (XWIKI, XCOMMONS, XRENDERING) AND issuetype = Task AND fixVersion in ($affectedVersions) AND component = "Dependency Upgrades"
+{{/jira}}
+{{/velocity}}
+
+= Translations =
+
+The following translations have been updated: 
+
+{{language codes="de,fr,pl,zh"}}{{/language}}
+
+= Tested Browsers & Databases =
+
+== Automated testing ==
+
+XWiki executes a lot of [[automated tests during its build>>dev:Community.Testing.WebHome||anchor="HTestingStrategy"]], testing all [[supported configurations>>dev:Community.SupportStrategy.WebHome]]. In addition, some manual QA is also executed to try to discover additional problems (see below):
+
+{{include reference="TestReports.ManualTestReportSummaryXWiki1740.WebHome"/}}
+
+{{comment}}
+TODO: uncomment and update with proper links when the report is ready.
+
+= Performances tests compared to <last super stable version> =
+
+{{display reference="test:Performances.Jetty HSQLDB single wiki xxx to yyy" section="HSummary"/}}
+
+More details on [[performance comparison on single wiki between x.x and y.y>>test:Performances.Jetty HSQLDB single wiki xxx to yyy]].
+{{/comment}}
+
+= Security Issues =
+
+Security issues are not listed in issue lists or dashboards to avoid disclosing ways to use them, but they will appear automatically in them once they're disclosed. See the [[XWiki Security Policy>>dev:Community.SecurityPolicy.WebHome]] for more details.
+
+= Known issues =
+
+* [[Bugs we know about>>https://jira.xwiki.org/issues/?jql=category%20%3D%2010000%20AND%20issuetype%20%3D%20Bug%20AND%20resolution%20%3D%20Unresolved%20ORDER%20BY%20updated%20DESC]]
+
+= Backward Compatibility and Migration Notes =
+
+== General Notes ==
+
+* When upgrading make sure you compare and merge the following XWiki configuration files since some parameters may have been modified, removed or added:
+** ##xwiki.cfg##
+** ##xwiki.properties##
+** ##web.xml##
+** ##hibernate.cfg.xml##
+* Add ##xwiki.store.migration=1## in ##xwiki.cfg## so that XWiki will attempt to automatically migrate your current database to any new schema. Make sure you backup your Database before doing anything.
+
+== Issues specific to {{velocity}}$product $version{{/velocity}} ==
+
+=== Live Data Vue Components registration ===
+
+With the upgrade to Vue 3, the former mechanism to load additional components is not supported.
+If you are using code such as the one presented below, please migrate your component to Vue 3 as well, and see the [[Live Data Component store>>||anchor="HLiveDatacomponentsstore"]] section to migrate.
+
+{{code language="javascript"}}
+Vue.component('DisplayerXXX', DisplayerXXXVue2Component);
+{{/code}}
+
+=== Removed Mail Plugin ===
+
+The Mail Plugin was a non-finished feature that was supposed to be used to be able to send mail to XWiki to bring modifications to wiki pages. It's now been removed and you'll need to remove its entry in ##xwiki.cfg## to avoid the following log error in the XWiki logs:
+
+{{code language="none"}}
+2025-05-20 17:16:15,170 [XWiki initialization] ERROR c.x.x.p.XWikiPluginManager     - Cannot initialize plugin [com.xpn.xwiki.plugin.mail.MailPlugin]. This plugin will not be available. 
+java.lang.ClassNotFoundException: com.xpn.xwiki.plugin.mail.MailPlugin
+        at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:440)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:587)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:520)
+        at org.xwiki.classloader.xwiki.internal.ContextNamespaceURLClassLoader.loadClass(ContextNamespaceURLClassLoader.java:176)
+        at java.base/java.lang.Class.forName0(Native Method)
+        at java.base/java.lang.Class.forName(Class.java:467)
+        at com.xpn.xwiki.plugin.XWikiPluginManager.addPlugin(XWikiPluginManager.java:83)
+        at com.xpn.xwiki.plugin.XWikiPluginManager.addPlugins(XWikiPluginManager.java:118)
+        at com.xpn.xwiki.XWiki.preparePlugins(XWiki.java:1654)
+        at com.xpn.xwiki.XWiki.initXWiki(XWiki.java:1371)
+        at com.xpn.xwiki.XWiki.initXWiki(XWiki.java:1293)
+        at com.xpn.xwiki.XWiki.<init>(XWiki.java:1266)
+        at com.xpn.xwiki.internal.XWikiInitializerJob.runInternal(XWikiInitializerJob.java:103)
+        at org.xwiki.job.AbstractJob.runInContext(AbstractJob.java:246)
+        at org.xwiki.job.AbstractJob.run(AbstractJob.java:223)
+        at java.base/java.lang.Thread.run(Thread.java:833)
+{{/code}}
+
+The change to bring to ##xwiki.cfg## is the following:
+
+{{code language="none"}}
+[...]
+#-# List of active plugins.
+xwiki.plugins=\
+  com.xpn.xwiki.monitor.api.MonitorPlugin,\
+  com.xpn.xwiki.plugin.skinx.JsSkinExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.JsSkinFileExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.JsResourceSkinExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.CssSkinExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.CssSkinFileExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.CssResourceSkinExtensionPlugin,\
+  com.xpn.xwiki.plugin.skinx.LinkExtensionPlugin,\
+  com.xpn.xwiki.plugin.feed.FeedPlugin,\
+  com.xpn.xwiki.plugin.mail.MailPlugin,\ <---- Remove this line
+  com.xpn.xwiki.plugin.packaging.PackagePlugin,\
+[...]
+{{/code}}
+
+=== New meta.vm template ===
+
+When the ##XWiki.XWikiPreferences^XWiki.XWikiPreferences[0].meta## field is emptied if it matched the default value when upgrading to 17.4.0RC1.
+You can consult this field from the UI by going to the [[//Presentation//>>extensions:Extension.Administration Application||anchor="HHTTPMetaInfo"]] section of the administration, under the //Look & Feel// category. Then check the //HTTP Meta Info// field.
+
+* When the ##meta## field is empty, the new ##meta.vm## template file is used.
+* After upgrading, it is advised to check if the ##meta## field is empty. If that's the case and no customization has been performed, you can check the history to verify if minor, irrelevant changes can be found. If that's the case, it is possible to empty the ##meta## field by yourself.
+
+== API Breakages ==
+
+No API breakage since {{velocity}}$product{{/velocity}} 17.3.0.
+
+{{comment}}
+{{velocity}}
+{{backwardCompatibilityReport134 version="$version"/}}
+{{/velocity}}
+{{/comment}}
+
+= Credits =
+
+The following people have contributed code and translations to this release (sorted alphabetically):
+
+* Alex Cotiugă 
+* Josue-T 
+* LucasC 
+* Manuel Leduc 
+* Marius Dumitru Florea 
+* Michael Hamann 
+* Simon Urli 
+* Simpel 
+* Thomas Mortagne 
+* Tomek 
+* Vincent Massol 
+* Xiaofei Cui 
+* jan2xue 
+* tkrieck 
+* xrichard 

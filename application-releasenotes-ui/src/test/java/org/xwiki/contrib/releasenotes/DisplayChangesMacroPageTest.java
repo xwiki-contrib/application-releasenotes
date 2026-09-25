@@ -403,7 +403,8 @@ class DisplayChangesMacroPageTest extends PageTest
 
         assertTrue(html.select("b").isEmpty(),
             "A macro in the change title must not be executed when the change is displayed: " + html.body().html());
-        assertTrue(html.text().contains("{{html}}"), "The title must still be displayed, as inert text: " + html.text());
+        assertTrue(html.text().contains("{{html}}"),
+            "The title must still be displayed, as inert text: " + html.text());
     }
 
     private Document render(String macroParameters, DocumentReference... changes) throws Exception
