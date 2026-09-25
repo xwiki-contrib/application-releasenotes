@@ -317,7 +317,7 @@ class DisplayChangesMacroPageTest extends PageTest
      * release note template then lists as an empty entry.
      */
     @ParameterizedTest
-    @ValueSource(strings = { "simple", "list", "grid", "flow" })
+    @ValueSource(strings = { "simple", "list", "grid", "flow", "migrationNotes" })
     void changeWithNoTitleGetsNoHeadingAtAll(String displayer) throws Exception
     {
         DocumentReference change = createChange("Entry001", "", SUMMARY, "");
@@ -355,27 +355,26 @@ class DisplayChangesMacroPageTest extends PageTest
 
     /**
      * Someone reading migration notes is about to upgrade and needs to know both what a note is about and what to do:
-     * the migration notes displayer gives the title of the note, linking to its page, and its summary.
+     * the migration notes displayer gives each note a section, titled after it with a third level heading, holding
+     * its summary.
      */
     @Test
-    void theMigrationNotesDisplayerDisplaysTheLinkedTitleAndTheSummary() throws Exception
+    void theMigrationNotesDisplayerTitlesEachNoteWithAHeading() throws Exception
     {
         DocumentReference note = createChange("Entry001", TITLE, MIGRATION_NOTE_SUMMARY, "");
 
         Document html = render("displayer=\"migrationNotes\"", note);
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
-        Elements links = html.select("li .rn-migration-change a");
-        assertEquals(1, links.size(), html.body().html());
-        assertEquals(TITLE, links.text());
-        assertTrue(links.attr("href").contains("Entry001"), links.attr("href"));
+        assertEquals(List.of(TITLE), html.select("h3.rn-migration-change").eachText(), html.body().html());
+        assertTrue(html.select("ul").isEmpty(), "The notes are sections, not list items: " + html.body().html());
         assertTrue(html.text().contains(MIGRATION_NOTE_SUMMARY), html.text());
         assertFalse(html.text().contains(MORE_DETAILS_KEY), "A note with no description has no details to link to.");
     }
 
     /**
      * The steps of a migration can be long, so a note may keep them in its description, which its page displays and
-     * which the list links to.
+     * which its section links to.
      */
     @Test
     void theMigrationNotesDisplayerLinksToTheDescription() throws Exception
@@ -384,13 +383,15 @@ class DisplayChangesMacroPageTest extends PageTest
 
         Document html = render("displayer=\"migrationNotes\"", note);
 
-        assertEquals(List.of(TITLE, MORE_DETAILS_KEY), html.select("li a").eachText(), html.body().html());
+        Elements links = html.select("a");
+        assertEquals(List.of(MORE_DETAILS_KEY), links.eachText(), html.body().html());
+        assertTrue(links.attr("href").contains("Entry001"), links.attr("href"));
         assertFalse(html.text().contains("The long procedure"), "The description is displayed on its page only.");
     }
 
     /**
-     * The migration notes displayer places the title of a change into a link label, which is wiki syntax, so the
-     * title is escaped there as well.
+     * The migration notes displayer places the title of a note into a heading, which is wiki syntax, so the title is
+     * escaped there as well.
      */
     @Test
     void theMigrationNotesDisplayerEscapesTheTitle() throws Exception

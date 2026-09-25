@@ -44,29 +44,35 @@
 ## - $changeItems
 ## - $displayEditLink
 ## A migration note is read by someone about to upgrade, who needs to know what it is about and what to do: each note
-## is displayed as its title, linking to its page, followed by its summary, and by a link to the details its page
-## holds when it has a description.
+## is displayed as a section titled after it, holding its summary, and a link to the details its page holds when it
+## has a description.
 #foreach ($item in $changeItems)
   #set ($changeDoc = $xwiki.getDocument($item))
   #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
-  #generateDisplayEditLink($displayEditLink, $changeDoc)##
-  ## The title and the reference are emitted into a link, so both are escaped: left raw, a value carrying wiki
-  ## syntax would close the link and have the rest of its value parsed on its own. The label of a link is parsed
-  ## once as part of the link and once more as the content of that link, so the title is escaped twice.
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))##
-  #set ($title = $services.rendering.escape($title, 'xwiki/2.1'))##
-  #set ($changeReference = $services.rendering.escape($services.model.serialize($changeDoc.documentReference, 'default'), 'xwiki/2.1'))##
-  * (((
-(% class="rn-migration-change" %)[[$title&gt;&gt;doc:$changeReference]]${displayEditLinkMarkup}
+  #generateDisplayEditLink($displayEditLink, $changeDoc)
+  ## The title is emitted into a heading, which is wiki syntax, so it is escaped: left raw, a title carrying wiki
+  ## syntax would have it rendered, macros included.
+  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
+  ## The title of a note is optional, so a note is only given a section of its own when it has one: a heading holding
+  ## no text at all would leave an empty section in the release note, and an empty entry in its table of contents.
+  ## The edit link then follows the summary, the only thing that displays such a note.
+  #if ($title != '')
+  (% class="rn-migration-change" %)
+  == $title${displayEditLinkMarkup}==
+  #end
+  ## Display the summary through the change document, so that its rich text is rendered in the context of that
+  ## document rather than of this displayer, the way the note's own page renders it. The edit link of a note with no
+  ## title reaches the summary line through a variable rather than through a directive closing that line: Velocity
+  ## drops the newline ending a line that ends with a directive.
+  #set ($summaryEditLinkMarkup = '')
+  #if ($title == '')
+    #set ($summaryEditLinkMarkup = $displayEditLinkMarkup)
+  #end
+  $changeDoc.display('summary', 'view', $changeObject)$summaryEditLinkMarkup
 
-## Display the summary through the change document, so that its rich text is rendered in the context of that
-## document rather than of this displayer, the way the change's own page renders it.
-$changeDoc.display('summary', 'view', $changeObject)
-#if ("$!changeObject.getValue('description')" != '')
-
-[[${moreDetailsLabel}&gt;&gt;doc:$changeReference]]
-#end
-)))
+  #if ("$!changeObject.getValue('description')" != '')
+    [[${moreDetailsLabel}&gt;&gt;doc:$services.rendering.escape($services.model.serialize($changeDoc.documentReference, 'default'), 'xwiki/2.1')]]
+  #end
 #end
 {{/velocity}}</content>
   <object>

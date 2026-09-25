@@ -224,7 +224,7 @@ class UpgradeNotesPageTest extends PageTest
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
         assertEquals(List.of("11.4-rc-1", "11.4", "11.10"), html.select("h2").eachText());
         assertEquals(List.of("Change of 11.4-rc-1", "Change of 11.4", "Another change of 11.4", "Change of 11.10"),
-            html.select(".rn-migration-change a").eachText());
+            html.select("h3").eachText());
         assertTrue(html.text().contains("Notes of Change of 11.4"), html.text());
     }
 

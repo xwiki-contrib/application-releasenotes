@@ -275,8 +275,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The migration notes of a release note are displayed as one list, whatever the audience each of them is
-     * written for, with no heading per audience.
+     * The migration notes of a release note are displayed one after the other, each titled with a third level
+     * heading, whatever the audience each of them is written for, with no heading per audience.
      */
     @Test
     void theMigrationNotesAreDisplayedAsOneList() throws Exception
@@ -294,8 +294,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
 
         assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
-        assertEquals(1, html.select("ul").size(), "Expected a single list of notes: " + html.body().html());
-        assertEquals(List.of("An admin note", "A developer note"), html.select(".rn-migration-change a").eachText());
+        assertEquals(List.of("An admin note", "A developer note"), html.select("h3").eachText(),
+            "Expected each note titled with a third level heading: " + html.body().html());
         assertTrue(html.select("h2").isEmpty(), "Expected no heading per audience: " + html.body().html());
     }
 
