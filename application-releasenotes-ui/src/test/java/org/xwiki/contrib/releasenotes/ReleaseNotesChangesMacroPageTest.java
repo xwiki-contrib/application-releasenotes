@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.xwiki.localization.macro.internal.TranslationMacro;
 import org.xwiki.model.reference.DocumentReference;
+import org.xwiki.model.reference.EntityReferenceSerializer;
 import org.xwiki.model.script.ModelScriptService;
 import org.xwiki.query.Query;
 import org.xwiki.query.QueryManager;
@@ -253,26 +254,49 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * Asked for its migration notes, a release note displays them instead of its changes: one query per audience,
-     * each keeping only the migration note entries, and none of the queries of the changes sections.
+     * Asked for its migration notes, a release note displays them instead of its changes: one query for all of them,
+     * whatever their audience, keeping only the migration note entries, and none of the queries of the changes
+     * sections.
      */
     @Test
-    void theMigrationNotesOfEachAudienceAreQueriedInsteadOfTheChanges() throws Exception
+    void theMigrationNotesAreQueriedInsteadOfTheChanges() throws Exception
     {
         when(this.query.execute()).thenReturn(changes(0));
 
         Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
 
-        assertEquals(AUDIENCE_COUNT, this.statements.size(), "Expected one query per audience: " + this.statements);
-        List<String> audiences = List.of("user", "administrator", "developer");
-        for (int index = 0; index < AUDIENCE_COUNT; index++) {
-            assertEquals(List.of(audiences.get(index)), boundValues(index, "audience"));
-            assertEquals(List.of(PRODUCT), boundValues(index, "product"));
-            assertEquals(List.of("Migration"), boundValues(index, "type"));
-            assertFalse(this.statements.get(index).contains("changes.screenshots"), this.statements.get(index));
-        }
+        assertEquals(1, this.statements.size(), "Expected a single query for the migration notes: " + this.statements);
+        assertEquals(List.of("user", "administrator", "developer"), boundValues(0, "audience"),
+            "The migration notes of every audience are asked for at once.");
+        assertEquals(List.of(PRODUCT), boundValues(0, "product"));
+        assertEquals(List.of("Migration"), boundValues(0, "type"));
+        assertFalse(this.statements.get(0).contains("changes.screenshots"), this.statements.get(0));
         assertTrue(html.text().contains("releasenotes.changes.migrationNotes.none"), html.body().html());
-        assertTrue(html.select("h2").isEmpty(), "No section is displayed when no change carries migration notes.");
+    }
+
+    /**
+     * The migration notes of a release note are displayed as one list, whatever the audience each of them is
+     * written for, with no heading per audience.
+     */
+    @Test
+    void theMigrationNotesAreDisplayedAsOneList() throws Exception
+    {
+        List<String> changeSpace = List.of("ReleaseNotes", "Code", "Change");
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeClass"));
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeDisplayerVelocityMacros"));
+        loadPage(new DocumentReference("xwiki", changeSpace, "ChangeDisplayerMigrationNotes"));
+        WikiMacroSetup.loadWikiMacro(this, this.componentManager,
+            new DocumentReference("xwiki", changeSpace, "DisplayChangesMacro"));
+        List<Object> notes = List.of(createMigrationNote("Entry001", "An admin note", "administrator"),
+            createMigrationNote("Entry002", "A developer note", "developer"));
+        when(this.query.execute()).thenReturn(notes);
+
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, "migrationNotes=\"true\" limit=\"100\"");
+
+        assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
+        assertEquals(1, html.select("ul").size(), "Expected a single list of notes: " + html.body().html());
+        assertEquals(List.of("An admin note", "A developer note"), html.select(".rn-migration-change a").eachText());
+        assertTrue(html.select("h2").isEmpty(), "Expected no heading per audience: " + html.body().html());
     }
 
     /**
@@ -591,6 +615,29 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         this.context.setDoc(releaseNote);
 
         return renderHTMLPage(releaseNote);
+    }
+
+    /**
+     * @return the local reference of a new migration note page of the {@code 8.3} release note, the way the search
+     *         returns it
+     */
+    private String createMigrationNote(String entry, String title, String audience) throws Exception
+    {
+        DocumentReference reference =
+            new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", PRODUCT, "8.3", entry), "WebHome");
+        XWikiDocument note = new XWikiDocument(reference);
+        note.setSyntax(Syntax.XWIKI_2_1);
+        BaseObject noteObject = note.newXObject(
+            new DocumentReference("xwiki", List.of("ReleaseNotes", "Code", "Change"), "ChangeClass"), this.context);
+        noteObject.setStringValue("title", title);
+        noteObject.setLargeStringValue("summary", title + " summary");
+        noteObject.setStringValue("audience", audience);
+        this.xwiki.saveDocument(note, this.context);
+
+        EntityReferenceSerializer<String> localSerializer =
+            this.componentManager.getInstance(EntityReferenceSerializer.TYPE_STRING, "local");
+
+        return localSerializer.serialize(reference);
     }
 
     /**

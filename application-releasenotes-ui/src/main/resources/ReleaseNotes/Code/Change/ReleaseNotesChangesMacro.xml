@@ -178,16 +178,6 @@
   #end
 #end
 
-## Displays the migration notes of one audience, under the heading of that audience, and nothing when it has none.
-#macro (displayMigrationNotesSection $audienceKey $changes $variableName $hasMore)
-  #if ($changes.size() &gt; 0)
-== {{translation key="releasenotes.changes.${audienceKey}.heading"/}} ==
-
-{{displayChanges displayer="migrationNotes" displayEditLink="$displayEditLink" contextVariable="$variableName"/}}
-
-    #displayTruncationWarning($hasMore false)
-  #end
-#end
 {{/velocity}}
 
 {{velocity}}
@@ -379,19 +369,14 @@
 
 {{velocity}}
 #if ($migrationNotesOnly)
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" types="Migration" contextVariable="userMigrationNotes"/}}
-
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" types="Migration" contextVariable="adminMigrationNotes"/}}
-
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" types="Migration" contextVariable="developerMigrationNotes"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Migration" contextVariable="migrationNotes"/}}
 #end
 {{/velocity}}
 
 {{velocity}}
 #if ($migrationNotesOnly)
   ## A migration note is added the way a change is, from a page the release note takes for it, and only differs from a
-  ## change by the type of its entry, which the form of the new entry carries along. The audience is left for the
-  ## author to choose in that form, a migration note being as often for administrators as for developers.
+  ## change by the type of its entry, which the form of the new entry carries along.
   #if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'migrationadd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
     #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
   #end
@@ -411,15 +396,15 @@
 {{/html}}
 
   #end
-  #removeExcludedChanges($userMigrationNotes)
-  #removeExcludedChanges($adminMigrationNotes)
-  #removeExcludedChanges($developerMigrationNotes)
-  #if ($userMigrationNotes.isEmpty() &amp;&amp; $adminMigrationNotes.isEmpty() &amp;&amp; $developerMigrationNotes.isEmpty())
+  ## The migration notes are listed as one list, whatever their audience: the notes of a release note are few, and
+  ## they are read by whoever upgrades, rather than by the audience a change is written for.
+  #removeExcludedChanges($migrationNotes)
+  #if ($migrationNotes.isEmpty())
     {{translation key="releasenotes.changes.migrationNotes.none"/}}
   #else
-    #displayMigrationNotesSection('user' $userMigrationNotes 'userMigrationNotes' $userMigrationNotesHasMore)
-    #displayMigrationNotesSection('admin' $adminMigrationNotes 'adminMigrationNotes' $adminMigrationNotesHasMore)
-    #displayMigrationNotesSection('developer' $developerMigrationNotes 'developerMigrationNotes' $developerMigrationNotesHasMore)
+    {{displayChanges displayer="migrationNotes" displayEditLink="$displayEditLink" contextVariable="migrationNotes"/}}
+
+    #displayTruncationWarning($migrationNotesHasMore false)
   #end
 #end
 {{/velocity}}</code>
@@ -671,7 +656,7 @@
       <defaultValue>false</defaultValue>
     </property>
     <property>
-      <description>"true" to display the backward compatibility and migration notes of the release note, grouped by audience, instead of its changes.</description>
+      <description>"true" to display the backward compatibility and migration notes of the release note, as one list, instead of its changes.</description>
     </property>
     <property>
       <mandatory>0</mandatory>
