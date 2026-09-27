@@ -38,6 +38,7 @@ import org.xwiki.test.junit5.mockito.MockComponent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
@@ -117,6 +118,27 @@ class ReleaseNotesScriptServiceTest
 
         assertSame(query, this.service.parseQuery(parameters));
         assertSame(result, this.service.search(query));
+    }
+
+    /**
+     * Versions are ordered the way they are released, and not alphabetically: a milestone comes before the release
+     * candidate and the final version it leads to, and 11.10 comes after 11.4.
+     */
+    @Test
+    void theVersionsAreSortedInTheOrderTheyAreReleasedIn()
+    {
+        List<String> versions = List.of("11.10", "11.4", "11.4-rc-1", "10.11.9", "11.4-milestone-1");
+
+        assertEquals(List.of("10.11.9", "11.4-milestone-1", "11.4-rc-1", "11.4", "11.10"),
+            this.service.sortVersions(versions));
+    }
+
+    @Test
+    void theVersionsAreComparedInTheOrderTheyAreReleasedIn()
+    {
+        assertTrue(this.service.compareVersions("11.4-rc-1", "11.4") < 0);
+        assertTrue(this.service.compareVersions("11.10", "11.4") > 0);
+        assertEquals(0, this.service.compareVersions("11.4", "11.4"));
     }
 
     @Test

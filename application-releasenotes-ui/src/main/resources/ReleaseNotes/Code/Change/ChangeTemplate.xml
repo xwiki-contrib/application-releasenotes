@@ -297,7 +297,7 @@
         <unmodifiable>0</unmodifiable>
         <validationMessage/>
         <validationRegExp/>
-        <values>Change</values>
+        <values>Change|Contributors|Migration</values>
         <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
       </type>
       <version>

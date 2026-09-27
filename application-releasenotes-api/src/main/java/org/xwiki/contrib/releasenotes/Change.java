@@ -42,6 +42,8 @@ public class Change
 
     private String version;
 
+    private ChangeType type;
+
     private String title;
 
     private String summary;
@@ -91,6 +93,29 @@ public class Change
     public void setVersion(String version)
     {
         this.version = version;
+    }
+
+    /**
+     * @return whether the change is something the version brings or something to do when upgrading to it, which
+     *         decides the part of the release note it is displayed in, or {@code null} when it is not said, which a
+     *         new change takes as a {@link ChangeType#CHANGE}
+     * @since 2.8
+     */
+    public ChangeType getType()
+    {
+        return this.type;
+    }
+
+    /**
+     * @param type see {@link #getType()}
+     * @since 2.8
+     */
+    @PropertyDescription("What the change stands for: \"change\" for something the version brings, displayed among "
+        + "the new and noteworthy changes, or \"migration\" for something to do when upgrading to the version, "
+        + "displayed among the backward compatibility and migration notes. Defaults to \"change\".")
+    public void setType(ChangeType type)
+    {
+        this.type = type;
     }
 
     /**

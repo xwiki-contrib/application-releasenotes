@@ -89,6 +89,8 @@ class DisplayChangesMacroPageTest extends PageTest
 
     private static final String SUMMARY = "What the first change brings";
 
+    private static final String MIGRATION_NOTE_DESCRIPTION = "Delete the Solr cache before upgrading";
+
     /**
      * The translation key of the label of the link towards the page of a change, which is what a page test displays
      * in place of the label itself since it registers no translation bundle.
@@ -120,7 +122,7 @@ class DisplayChangesMacroPageTest extends PageTest
         this.componentManager.registerMockComponent(SkinExtension.class, "ssfx");
 
         loadPage(CHANGE_CLASS);
-        for (String displayer : List.of("Simple", "List", "Grid", "Flow")) {
+        for (String displayer : List.of("Simple", "List", "Grid", "Flow", "MigrationNotes")) {
             loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayer" + displayer));
         }
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayerVelocityMacros"));
@@ -349,6 +351,59 @@ class DisplayChangesMacroPageTest extends PageTest
             String.format("The \"%s\" displayer dropped the screenshots of the change: %s", displayer, html));
         assertFalse(NESTED_PARAGRAPH.matcher(html).find(),
             String.format("The \"%s\" displayer left the summary sharing its paragraph: %s", displayer, html));
+    }
+
+    /**
+     * Someone reading migration notes is about to upgrade and needs to know both what a note is about and what to do:
+     * the migration notes displayer gives each note a section, titled after it with a second level heading, holding
+     * its description, which is what the form of a note fills, and not its summary.
+     */
+    @Test
+    void theMigrationNotesDisplayerTitlesEachNoteWithAHeadingAboveItsDescription() throws Exception
+    {
+        DocumentReference note = createChange("Entry001", TITLE, SUMMARY, MIGRATION_NOTE_DESCRIPTION);
+
+        Document html = render("displayer=\"migrationNotes\"", note);
+
+        assertTrue(html.select(".xwikirenderingerror").isEmpty(), html.body().html());
+        assertEquals(List.of(TITLE), html.select("h2.rn-migration-change").eachText(), html.body().html());
+        assertTrue(html.select("ul").isEmpty(), "The notes are sections, not list items: " + html.body().html());
+        assertTrue(html.text().contains(MIGRATION_NOTE_DESCRIPTION), html.text());
+        assertFalse(html.text().contains(SUMMARY), "The summary is not part of a migration note: " + html.text());
+        assertTrue(html.select("a").isEmpty(), "The whole note is displayed, with nothing to link to.");
+    }
+
+    /**
+     * A note with no title is nothing but its description, and gets no heading holding no text at all.
+     */
+    @Test
+    void theMigrationNotesDisplayerGivesANoteWithNoTitleNoHeading() throws Exception
+    {
+        DocumentReference note = createChange("Entry001", "", SUMMARY, MIGRATION_NOTE_DESCRIPTION);
+
+        Document html = render("displayer=\"migrationNotes\"", note);
+
+        assertTrue(html.select("h2").isEmpty(), html.body().html());
+        assertTrue(html.text().contains(MIGRATION_NOTE_DESCRIPTION), html.text());
+    }
+
+    /**
+     * The migration notes displayer places the title of a note into a heading, which is wiki syntax, so the title is
+     * escaped there as well.
+     */
+    @Test
+    void theMigrationNotesDisplayerEscapesTheTitle() throws Exception
+    {
+        this.componentManager.registerComponent(ScriptService.class, "rendering",
+            new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
+        DocumentReference change =
+            createChange("Entry001", "{{html}}<b>injected</b>{{/html}}", "", MIGRATION_NOTE_DESCRIPTION);
+
+        Document html = render("displayer=\"migrationNotes\"", change);
+
+        assertTrue(html.select("b").isEmpty(),
+            "A macro in the change title must not be executed when the change is displayed: " + html.body().html());
+        assertTrue(html.text().contains("{{html}}"), "The title must still be displayed, as inert text: " + html.text());
     }
 
     private Document render(String macroParameters, DocumentReference... changes) throws Exception

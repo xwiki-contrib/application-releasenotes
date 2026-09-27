@@ -41,9 +41,10 @@ import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet} in edit mode.
+ * Page test for {@code ReleaseNotes.Code.Change.ChangeSheet}.
  *
  * @version $Id$
  */
@@ -80,6 +81,7 @@ class ChangeSheetPageTest extends PageTest
         loadPage(CHANGE_CLASS);
         loadPage(new DocumentReference("xwiki", CODE_SPACE, "EntryVelocityMacros"));
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeDisplayerVelocityMacros"));
+        loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "MigrationNoteEditor"));
         loadPage(new DocumentReference("xwiki", CHANGE_SPACE, "ChangeSheet"));
     }
 
@@ -156,7 +158,57 @@ class ChangeSheetPageTest extends PageTest
             renderChangeInEditMode().select("ul li").eachText());
     }
 
+    /**
+     * A migration note is added from its own button, which asks the form for a migration note entry: the form carries
+     * that type along, since saving it only stores the fields it holds, and the entry would otherwise be saved as the
+     * plain change its template makes it.
+     */
+    @Test
+    void theTypeTheEntryWasAddedWithIsCarriedByTheForm() throws Exception
+    {
+        this.request.put("type", "Migration");
+
+        Elements typeInputs =
+            renderChangeInEditMode().select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_type]");
+
+        assertEquals(List.of("Migration"), typeInputs.eachAttr("value"));
+    }
+
+    /**
+     * A migration note is only a title and a description: its form holds nothing else an author fills, and carries
+     * the product, the version and the type of its entry along so that saving it stores them.
+     */
+    @Test
+    void aMigrationNoteIsEditedWithItsTitleAndItsDescriptionOnly() throws Exception
+    {
+        this.request.put("type", "Migration");
+        this.request.put("product", "XWiki");
+        this.request.put("version", "8.3-milestone-1");
+
+        Document html = renderChangeInEditMode();
+
+        assertEquals(List.of(
+            "ReleaseNotes.Code.Change.ChangeClass_title",
+            "ReleaseNotes.Code.Change.ChangeClass_description"),
+            html.select("dt label").eachText());
+        assertEquals(List.of("XWiki"),
+            html.select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_product]").eachAttr("value"));
+        assertEquals(List.of("8.3-milestone-1"),
+            html.select("input[type=hidden][name=ReleaseNotes.Code.EntryClass_0_version]").eachAttr("value"));
+        assertTrue(html.select("ul li").isEmpty(), "The conventions of a change do not apply to a migration note.");
+    }
+
     private Document renderChangeInEditMode() throws Exception
+    {
+        XWikiDocument change = createChange();
+        this.xwiki.saveDocument(change, this.context);
+        this.context.setDoc(change);
+        this.context.setAction("edit");
+
+        return renderHTMLPage(change);
+    }
+
+    private XWikiDocument createChange() throws Exception
     {
         XWikiDocument change = new XWikiDocument(CHANGE);
         change.newXObject(ENTRY_CLASS, this.context);
@@ -164,11 +216,8 @@ class ChangeSheetPageTest extends PageTest
         // The sheet is included rather than applied so that the change stays the current document, which is what the
         // sheet mechanism does and what the sheet relies on to find its objects.
         change.setContent("{{include reference=\"ReleaseNotes.Code.Change.ChangeSheet\" context=\"current\"/}}");
-        this.xwiki.saveDocument(change, this.context);
-        this.context.setDoc(change);
-        this.context.setAction("edit");
 
-        return renderHTMLPage(change);
+        return change;
     }
 
     /**

@@ -28,6 +28,7 @@ import javax.inject.Named;
 
 import org.junit.jupiter.api.Test;
 import org.xwiki.contrib.releasenotes.Audience;
+import org.xwiki.contrib.releasenotes.ChangeType;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
@@ -174,6 +175,7 @@ class RepresentationFactoryTest
         representation.setTitle("The title");
         representation.setSummary("The summary");
         representation.setDescription("The description");
+        representation.setType("Migration");
         representation.setAudience("administrator");
         representation.setImportance("high");
         representation.setCategory("Performance");
@@ -190,6 +192,7 @@ class RepresentationFactoryTest
         assertEquals("The title", change.getTitle());
         assertEquals("The summary", change.getSummary());
         assertEquals("The description", change.getDescription());
+        assertEquals(ChangeType.MIGRATION, change.getType());
         assertEquals(Audience.ADMINISTRATOR, change.getAudience());
         assertEquals(Importance.HIGH, change.getImportance());
         assertEquals("Performance", change.getCategory());
@@ -216,6 +219,18 @@ class RepresentationFactoryTest
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> importanceOf("huge"));
 
         assertEquals("The importance [huge] is none of [low, medium, high].", exception.getMessage());
+    }
+
+    @Test
+    void aPostedTypeThatIsNoTypeIsRefused()
+    {
+        ChangeRepresentation representation = new ChangeRepresentation();
+        representation.setType("contributors");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+            () -> this.factory.toChange(representation, "XWiki", "8.3"));
+
+        assertEquals("The type [contributors] is none of [change, migration].", exception.getMessage());
     }
 
     @Test
@@ -248,6 +263,7 @@ class RepresentationFactoryTest
         change.setTitle("The title");
         change.setAudience(Audience.DEVELOPER);
         change.setImportance(Importance.MEDIUM);
+        change.setType(ChangeType.MIGRATION);
 
         ChangeRepresentation representation = this.factory.toRepresentation(change, ENTRY);
 
@@ -256,6 +272,7 @@ class RepresentationFactoryTest
         assertEquals("The title", representation.getTitle());
         assertEquals("developer", representation.getAudience());
         assertEquals("medium", representation.getImportance());
+        assertEquals("migration", representation.getType());
         assertEquals("ReleaseNotes.Data.XWiki.8\\.3.WebHome", representation.getReference());
     }
 

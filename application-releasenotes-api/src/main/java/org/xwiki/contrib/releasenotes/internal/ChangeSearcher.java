@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -76,6 +77,8 @@ public class ChangeSearcher
 
     private static final String SCREENSHOTS = "screenshots";
 
+    private static final String TYPE = "type";
+
     /**
      * The condition matching the changes that are illustrated. The media of a change are stored as a large string,
      * which some databases give back as null rather than as the empty string when it was never set, so both are
@@ -88,6 +91,8 @@ public class ChangeSearcher
      * spelled out because joining an empty list of conditions would generate "()" and make the whole query invalid.
      */
     private static final String MATCHES_NOTHING = "1 = 0";
+
+    private static final String NOT = "not ";
 
     @Inject
     private QueryManager queryManager;
@@ -118,7 +123,15 @@ public class ChangeSearcher
 
         if (query.getContainsScreenshots() != null) {
             String illustrated = String.format(ILLUSTRATED_FORMAT, CHANGE_ALIAS, SCREENSHOTS);
-            conditions.add(query.getContainsScreenshots() ? illustrated : "not " + illustrated);
+            conditions.add(query.getContainsScreenshots() ? illustrated : NOT + illustrated);
+        }
+
+        if (query.getTypes() != null) {
+            addFilters(conditions, bindings, ENTRY_ALIAS, TYPE, query.getTypes());
+        }
+
+        if (query.getReleased() != null) {
+            addReleasedFilter(conditions, bindings, query.getReleased());
         }
 
         // Both classes of a change are joined: the entry says which release note the change belongs to, and the
@@ -133,6 +146,61 @@ public class ChangeSearcher
             CHANGE_ALIAS, IMPORTANCE);
 
         return executeSearch(statement, bindings, query);
+    }
+
+    /**
+     * Filters on whether the release note of the product and of the version of each change is marked released. The
+     * release notes marked released are looked up first rather than joined in, since a change whose version has no
+     * release note is not released, and a join would leave such a change out of both answers. Both the product and
+     * the version are matched, since two products may have released the same version number.
+     */
+    private void addReleasedFilter(List<String> conditions, Map<String, String> bindings, boolean released)
+        throws ReleaseNotesException
+    {
+        String statement = String.format(
+            "select distinct note.%1$s, note.%2$s from Document doc, doc.object(%3$s) as note where note.released = 1",
+            PRODUCT, VERSION, serialize(ReleaseNotesReferences.RELEASE_NOTE_CLASS));
+        List<Object[]> releasedNotes = executeLookup(statement, "the released versions");
+        List<String> noteConditions = new ArrayList<>();
+        int index = 0;
+
+        for (Object[] releasedNote : releasedNotes) {
+            index++;
+            String productParameter = "releasedProduct" + index;
+            String versionParameter = "releasedVersion" + index;
+            noteConditions.add(String.format("(%1$s.%2$s = :%3$s and %1$s.%4$s = :%5$s)", ENTRY_ALIAS, PRODUCT,
+                productParameter, VERSION, versionParameter));
+            bindings.put(productParameter, Objects.toString(releasedNote[0], ""));
+            bindings.put(versionParameter, Objects.toString(releasedNote[1], ""));
+        }
+
+        if (noteConditions.isEmpty()) {
+            // No version is released, so every change is an unreleased one.
+            if (released) {
+                conditions.add(MATCHES_NOTHING);
+            }
+            return;
+        }
+
+        String releasedCondition = anyOf(noteConditions);
+        conditions.add(released ? releasedCondition : NOT + releasedCondition);
+    }
+
+    /**
+     * @return the condition matching what any of the passed conditions matches
+     */
+    private static String anyOf(List<String> conditions)
+    {
+        return "(" + String.join(" or ", conditions) + ")";
+    }
+
+    private <T> List<T> executeLookup(String statement, String lookedUp) throws ReleaseNotesException
+    {
+        try {
+            return this.queryManager.createQuery(statement, Query.XWQL).execute();
+        } catch (QueryException e) {
+            throw new ReleaseNotesException(String.format("Failed to look up %s of this wiki.", lookedUp), e);
+        }
     }
 
     /**
@@ -190,7 +258,7 @@ public class ChangeSearcher
             filterConditions.add(MATCHES_NOTHING);
         }
 
-        conditions.add("(" + String.join(" or ", filterConditions) + ")");
+        conditions.add(anyOf(filterConditions));
     }
 
     /**

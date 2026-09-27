@@ -159,6 +159,10 @@
 #set ($exclusions = "$!wikimacro.parameters.exclusions")
 #set ($exclusions = $exclusions.split('\s*,\s*'))
 #set ($changesLimit = "$!wikimacro.parameters.limit")
+## With migrationNotes="true", the macro displays the backward compatibility and migration notes of the release note
+## instead of its changes. Each block below displaying the changes is guarded by this flag, since a block cannot keep
+## the blocks after it from running.
+#set ($migrationNotesOnly = "$!wikimacro.parameters.migrationNotes" == 'true')
 
 #macro (removeExcludedChanges $changes)
   #set ($discard = $changes.removeAll($exclusions))
@@ -173,6 +177,7 @@
 )))
   #end
 #end
+
 {{/velocity}}
 
 {{velocity}}
@@ -194,6 +199,7 @@
 ## Decide whether or not display edit links for changes: only display them when the current user has edit rights on
 ## the current page
 #set ($displayEditLink = $hasEdit)
+#if (!$migrationNotesOnly)
 == {{translation key="releasenotes.changes.user.heading"/}} ==
 ## Handle the action only under the same condition that shows its button: the current user can edit the note and
 ## the note is not released. The button being hidden otherwise is not by itself what keeps the action from running.
@@ -215,17 +221,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($userChanges)
 #removeExcludedChanges($userMiscChanges)
 #if ($userChanges.size() == 0)
@@ -263,17 +275,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($adminChanges)
 #removeExcludedChanges($adminMiscChanges)
 #if ($adminChanges.size() == 0)
@@ -311,17 +329,23 @@
 &lt;/form&gt;
 {{/html}}
 #end
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
+#if (!$migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Change" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
+#end
 {{/velocity}}
 
 {{velocity}}
+#if (!$migrationNotesOnly)
 #removeExcludedChanges($devChanges)
 #removeExcludedChanges($devMiscChanges)
 #if ($devChanges.size() == 0)
@@ -339,7 +363,51 @@
     {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="devMiscChanges"/}}
   #end
 #end
-#displayTruncationWarning($devChangesHasMore, $devMiscChangesHasMore)</code>
+#displayTruncationWarning($devChangesHasMore, $devMiscChangesHasMore)
+#end
+{{/velocity}}
+
+{{velocity}}
+#if ($migrationNotesOnly)
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" types="Migration" contextVariable="migrationNotes"/}}
+#end
+{{/velocity}}
+
+{{velocity}}
+#if ($migrationNotesOnly)
+  ## A migration note is added the way a change is, from a page the release note takes for it, and only differs from a
+  ## change by the type of its entry, which the form of the new entry carries along.
+  #if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'migrationadd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
+    #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
+  #end
+  #if ($hasEdit &amp;&amp; $released != '1')
+{{html clean='false'}}
+&lt;form&gt;
+  &lt;input type="hidden" name="action" value="migrationadd"/&gt;
+  &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
+  &lt;input type="hidden" name="template" value="ReleaseNotes.Code.Change.ChangeTemplate"/&gt;
+  &lt;input type="hidden" name="product" value="$!escapetool.xml($product)"/&gt;
+  &lt;input type="hidden" name="version" value="$!escapetool.xml($version)"/&gt;
+  &lt;input type="hidden" name="type" value="Migration"/&gt;
+  &lt;span class="buttonwrapper"&gt;
+    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.changes.migrationNotes.submit'))"/&gt;
+  &lt;/span&gt;
+&lt;/form&gt;
+{{/html}}
+
+  #end
+  ## The migration notes are listed as one list, whatever their audience: the notes of a release note are few, and
+  ## they are read by whoever upgrades, rather than by the audience a change is written for.
+  #removeExcludedChanges($migrationNotes)
+  #if ($migrationNotes.isEmpty())
+    {{translation key="releasenotes.changes.migrationNotes.none"/}}
+  #else
+    {{displayChanges displayer="migrationNotes" displayEditLink="$displayEditLink" contextVariable="migrationNotes"/}}
+
+    #displayTruncationWarning($migrationNotesHasMore false)
+  #end
+#end
+{{/velocity}}</code>
     </property>
     <property>
       <contentDescription/>
@@ -517,6 +585,84 @@
     </property>
     <property>
       <name>limit</name>
+    </property>
+    <property>
+      <type/>
+    </property>
+  </object>
+  <object>
+    <name>ReleaseNotes.Code.Change.ReleaseNotesChangesMacro</name>
+    <number>2</number>
+    <className>XWiki.WikiMacroParameterClass</className>
+    <guid>caf1d354-a1d7-405f-972b-f71a8837d7f5</guid>
+    <class>
+      <name>XWiki.WikiMacroParameterClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <defaultValue>
+        <disabled>0</disabled>
+        <name>defaultValue</name>
+        <number>4</number>
+        <prettyName>Parameter default value</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </defaultValue>
+      <description>
+        <disabled>0</disabled>
+        <name>description</name>
+        <number>2</number>
+        <prettyName>Parameter description</prettyName>
+        <rows>5</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </description>
+      <mandatory>
+        <disabled>0</disabled>
+        <displayFormType>select</displayFormType>
+        <displayType>yesno</displayType>
+        <name>mandatory</name>
+        <number>3</number>
+        <prettyName>Parameter mandatory</prettyName>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.BooleanClass</classType>
+      </mandatory>
+      <name>
+        <disabled>0</disabled>
+        <name>name</name>
+        <number>1</number>
+        <prettyName>Parameter name</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </name>
+      <type>
+        <disabled>0</disabled>
+        <name>type</name>
+        <number>5</number>
+        <prettyName>Parameter type</prettyName>
+        <size>60</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </type>
+    </class>
+    <property>
+      <defaultValue>false</defaultValue>
+    </property>
+    <property>
+      <description>"true" to display the backward compatibility and migration notes of the release note, as one list, instead of its changes.</description>
+    </property>
+    <property>
+      <mandatory>0</mandatory>
+    </property>
+    <property>
+      <name>migrationNotes</name>
     </property>
     <property>
       <type/>

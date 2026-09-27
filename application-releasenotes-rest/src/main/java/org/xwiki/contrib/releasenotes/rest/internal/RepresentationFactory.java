@@ -34,6 +34,7 @@ import jakarta.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.Audience;
+import org.xwiki.contrib.releasenotes.ChangeType;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
@@ -138,6 +139,7 @@ public class RepresentationFactory
         change.setTitle(representation.getTitle());
         change.setSummary(representation.getSummary());
         change.setDescription(representation.getDescription());
+        change.setType(toType(representation.getType()));
         change.setAudience(toAudience(representation.getAudience()));
         change.setImportance(toImportance(representation.getImportance()));
         change.setCategory(representation.getCategory());
@@ -159,6 +161,7 @@ public class RepresentationFactory
         representation.setTitle(change.getTitle());
         representation.setSummary(change.getSummary());
         representation.setDescription(change.getDescription());
+        representation.setType(change.getType() == null ? null : toName(change.getType()));
         representation.setAudience(change.getAudience() == null ? null : change.getAudience().getStoredValue());
         representation.setImportance(change.getImportance() == null ? null : toName(change.getImportance()));
         representation.setCategory(change.getCategory());
@@ -218,6 +221,22 @@ public class RepresentationFactory
         return LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault()).toString();
     }
 
+    private ChangeType toType(String type)
+    {
+        if (StringUtils.isBlank(type)) {
+            return null;
+        }
+
+        ChangeType resolved = ChangeType.fromStoredValue(type);
+
+        if (resolved == null) {
+            throw new IllegalArgumentException(String.format("The type [%s] is none of [%s].", type,
+                names(Stream.of(ChangeType.values()).map(RepresentationFactory::toName))));
+        }
+
+        return resolved;
+    }
+
     private Audience toAudience(String audience)
     {
         if (StringUtils.isBlank(audience)) {
@@ -265,6 +284,11 @@ public class RepresentationFactory
     private static String toName(Importance importance)
     {
         return importance.name().toLowerCase(Locale.ROOT);
+    }
+
+    private static String toName(ChangeType type)
+    {
+        return type.name().toLowerCase(Locale.ROOT);
     }
 
     /**

@@ -146,6 +146,8 @@ class DefaultChangeQueryParserTest
         assertEquals(List.of(ANY), unrestricted.getCategories());
         assertEquals(List.of(ANY), unrestricted.getImportances());
         assertNull(unrestricted.getContainsScreenshots());
+        assertNull(unrestricted.getTypes());
+        assertNull(unrestricted.getReleased());
         assertEquals(ChangeQuery.DEFAULT_LIMIT, unrestricted.getLimit());
         assertEquals(0, unrestricted.getOffset());
 
@@ -220,6 +222,35 @@ class DefaultChangeQueryParserTest
     void theScreenshotFilterAcceptsTheTwoWordsItIsWrittenWith(String written, Boolean expected)
     {
         assertEquals(expected, parse(ChangeQueryParser.CONTAINS_SCREENSHOTS, written).getContainsScreenshots());
+    }
+
+    /**
+     * The released filter is a choice just like the screenshot filter, and accepts the same two words.
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "true,  true",
+        "false, false",
+        "True,  ",
+        "yes,   ",
+        "'',    "
+    })
+    void theReleasedFilterAcceptsTheTwoWordsItIsWrittenWith(String written, Boolean expected)
+    {
+        assertEquals(expected, parse(ChangeQueryParser.RELEASED, written).getReleased());
+    }
+
+    /**
+     * A type is stored capitalized, and is matched whatever the case it is written with, the way the audience is,
+     * while a value naming no type is kept as it is written, so that it can still be a pattern.
+     */
+    @Test
+    void aTypeIsReadWhateverItsCase()
+    {
+        assertEquals(List.of(new ChangeFilter(ChangeFilter.Operator.LIKE, "Migration"),
+            new ChangeFilter(ChangeFilter.Operator.EQUALS, "Change"),
+            new ChangeFilter(ChangeFilter.Operator.LIKE, "Mig%")),
+            parse(ChangeQueryParser.TYPES, "migration, =CHANGE, Mig%").getTypes());
     }
 
     /**

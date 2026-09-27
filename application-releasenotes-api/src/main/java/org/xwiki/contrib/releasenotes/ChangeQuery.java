@@ -62,6 +62,10 @@ public class ChangeQuery
 
     private Boolean containsScreenshots;
 
+    private List<ChangeFilter> types;
+
+    private Boolean released;
+
     private int limit = DEFAULT_LIMIT;
 
     private int offset;
@@ -162,6 +166,52 @@ public class ChangeQuery
     public void setContainsScreenshots(Boolean containsScreenshots)
     {
         this.containsScreenshots = containsScreenshots;
+    }
+
+    /**
+     * Unlike the other properties of a change, the type is not filtered at all until a caller says otherwise, rather
+     * than filtered with a filter matching every value: filtering a property is joining it in, which would leave out
+     * an entry holding no type at all from every search of the wiki, and not only from the ones asking about the type.
+     *
+     * @return the filters on the type of the changes, whose values are the stored ones, e.g. {@code Migration}, or
+     *         {@code null} to return the changes of every type
+     * @see ChangeType#getStoredValue()
+     * @since 2.8
+     */
+    public List<ChangeFilter> getTypes()
+    {
+        return this.types;
+    }
+
+    /**
+     * @param types the filters on the type of the changes, or {@code null} to not filter on it
+     * @since 2.8
+     */
+    public void setTypes(List<ChangeFilter> types)
+    {
+        this.types = types;
+    }
+
+    /**
+     * A change is released when the release note of its product and of its version is marked released. A change
+     * whose version has no release note is not released, since nothing says that version ever shipped.
+     *
+     * @return {@code true} to return only the released changes, {@code false} to return only the ones that are not,
+     *         and {@code null} to return both
+     * @since 2.8
+     */
+    public Boolean getReleased()
+    {
+        return this.released;
+    }
+
+    /**
+     * @param released whether the changes are released, or {@code null} to not ask
+     * @since 2.8
+     */
+    public void setReleased(Boolean released)
+    {
+        this.released = released;
     }
 
     /**

@@ -38,6 +38,8 @@ public class ChangeRepresentation
 
     private String description;
 
+    private String type;
+
     private String audience;
 
     private String importance;
@@ -101,6 +103,25 @@ public class ChangeRepresentation
     public void setDescription(String description)
     {
         this.description = description;
+    }
+
+    /**
+     * @return what the change stands for, {@code change} for something the version brings or {@code migration} for
+     *         something to do when upgrading to it, which decides the part of the release note it is displayed in
+     * @since 2.8
+     */
+    public String getType()
+    {
+        return this.type;
+    }
+
+    /**
+     * @param type see {@link #getType()}
+     * @since 2.8
+     */
+    public void setType(String type)
+    {
+        this.type = type;
     }
 
     /**
