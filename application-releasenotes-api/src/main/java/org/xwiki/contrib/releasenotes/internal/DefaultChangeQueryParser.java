@@ -148,13 +148,9 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
      */
     private static String parseImportance(String value)
     {
-        for (Importance importance : Importance.values()) {
-            if (importance.name().equalsIgnoreCase(value)) {
-                return importance.getStoredValue();
-            }
-        }
+        Importance importance = Importance.fromName(value);
 
-        return value;
+        return importance == null ? value : importance.getStoredValue();
     }
 
     /**

@@ -62,18 +62,6 @@ import com.xpn.xwiki.objects.BaseObject;
 @Unstable
 public class DefaultReleaseNoteManager implements ReleaseNoteManager
 {
-    /**
-     * The version of a milestone is written with this letter in a page name, e.g. {@code 8.3M1} for
-     * {@code 8.3-milestone-1}.
-     */
-    private static final String MILESTONE_LETTER = "M";
-
-    /**
-     * The version of a release candidate is written with these letters in a page name, e.g. {@code 8.3RC1} for
-     * {@code 8.3-rc-1}.
-     */
-    private static final String RELEASE_CANDIDATE_LETTERS = "RC";
-
     private static final String PRODUCT = "product";
 
     private static final String VERSION = "version";
@@ -110,7 +98,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
     private ProductResolver productResolver;
 
     @Inject
-    private ReleaseNotesDocumentWriter documentWriter;
+    private ReleaseNotesDocumentStore documentStore;
 
     @Inject
     private QueryManager queryManager;
@@ -139,7 +127,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
         DocumentReference reference = getReleaseNoteReference(product, version);
 
         XWikiContext xcontext = this.xcontextProvider.get();
-        XWikiDocument document = loadDocument(reference, xcontext);
+        XWikiDocument document = this.documentStore.load(reference);
 
         if (!document.isNew()) {
             throw new ReleaseNoteAlreadyExistsException(reference);
@@ -161,7 +149,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
                 String.format("Failed to fill the page [%s] of the new release note.", reference), e);
         }
 
-        this.documentWriter.save(document, "New Release note");
+        this.documentStore.save(document, "New Release note");
 
         return reference;
     }
@@ -181,7 +169,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
         // The page exists, and the instance the store answers with for a page that exists is the one it holds in its
         // cache, which a caller must not write into: what is modified here is a copy of it, and the save is what
         // makes the wiki hold it.
-        XWikiDocument document = loadDocument(reference, xcontext).clone();
+        XWikiDocument document = this.documentStore.load(reference).clone();
         BaseObject object = document.getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS);
 
         if (object == null) {
@@ -197,7 +185,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
                 String.format("Failed to write the release note of the page [%s].", reference), e);
         }
 
-        this.documentWriter.save(document, "Updated release note");
+        this.documentStore.save(document, "Updated release note");
 
         return toReleaseNote(object);
     }
@@ -205,25 +193,13 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
     @Override
     public DocumentReference getReleaseNoteReference(String product, String version)
     {
-        if (StringUtils.isBlank(product) || StringUtils.isBlank(version)) {
-            throw new IllegalArgumentException(String.format(
-                "A release note is located by a product and a version, and got the product [%s] and the version "
-                    + "[%s].", product, version));
-        }
-
-        List<String> spaces = new ArrayList<>(ReleaseNotesReferences.DATA_SPACE);
-        spaces.add(product);
-        spaces.add(getShortVersion(version));
-
-        return new DocumentReference(this.xcontextProvider.get().getWikiId(), spaces, "WebHome");
+        return ReleaseNotesReferences.releaseNote(this.xcontextProvider.get().getWikiId(), product, version);
     }
 
     @Override
     public ReleaseNote getReleaseNote(DocumentReference reference) throws ReleaseNotesException
     {
-        XWikiContext xcontext = this.xcontextProvider.get();
-        BaseObject object =
-            loadDocument(reference, xcontext).getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS);
+        BaseObject object = this.documentStore.load(reference).getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS);
 
         if (object == null) {
             throw new ReleaseNotesNotFoundException(String.format(NO_RELEASE_NOTE, reference), reference);
@@ -279,18 +255,18 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
     public List<String> getAggregatedVersions(DocumentReference noteReference)
     {
         String shortVersion = noteReference.getLastSpaceReference().getName();
-        int position = shortVersion.indexOf(MILESTONE_LETTER);
+        int position = shortVersion.indexOf(ReleaseNotesReferences.MILESTONE_LETTER);
 
         if (position > -1) {
             return List.of(shortVersion.substring(0, position) + "-milestone-"
-                + shortVersion.substring(position + MILESTONE_LETTER.length()));
+                + shortVersion.substring(position + ReleaseNotesReferences.MILESTONE_LETTER.length()));
         }
 
-        position = shortVersion.indexOf(RELEASE_CANDIDATE_LETTERS);
+        position = shortVersion.indexOf(ReleaseNotesReferences.RELEASE_CANDIDATE_LETTERS);
 
         if (position > -1) {
             return List.of(shortVersion.substring(0, position) + "-rc-"
-                + shortVersion.substring(position + RELEASE_CANDIDATE_LETTERS.length()));
+                + shortVersion.substring(position + ReleaseNotesReferences.RELEASE_CANDIDATE_LETTERS.length()));
         }
 
         // A final version also displays the changes of its milestones and of its release candidates, which are
@@ -336,19 +312,6 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
     }
 
     /**
-     * Gives the form a version is written in the page name of a release note: the separators taken out and the word
-     * "milestone" shortened, so that {@code 8.3-milestone-1} is written {@code 8.3M1}.
-     *
-     * @param version the version in its long form
-     * @return that version in its short form
-     */
-    private String getShortVersion(String version)
-    {
-        return StringUtils.upperCase(StringUtils.replaceChars(version, "-", "")).replace("MILESTONE",
-            MILESTONE_LETTER);
-    }
-
-    /**
      * @param product the product the release note is about
      * @param version the version the release note is about
      * @return the title to give that release note, in the language of the user creating it
@@ -375,7 +338,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
             return;
         }
 
-        XWikiDocument template = loadDocument(templateReference, xcontext);
+        XWikiDocument template = this.documentStore.load(templateReference);
 
         if (template.isNew()) {
             throw new ReleaseNotesException(
@@ -393,15 +356,5 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
         }
 
         document.setEnforceRequiredRights(template.isEnforceRequiredRights());
-    }
-
-    private XWikiDocument loadDocument(DocumentReference reference, XWikiContext xcontext)
-        throws ReleaseNotesException
-    {
-        try {
-            return xcontext.getWiki().getDocument(reference, xcontext);
-        } catch (XWikiException e) {
-            throw new ReleaseNotesException(String.format("Failed to load the page [%s].", reference), e);
-        }
     }
 }

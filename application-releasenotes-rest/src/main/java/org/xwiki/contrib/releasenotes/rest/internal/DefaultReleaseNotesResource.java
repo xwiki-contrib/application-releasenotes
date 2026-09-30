@@ -54,10 +54,10 @@ public class DefaultReleaseNotesResource extends AbstractReleaseNotesResource
     private ReleaseNoteManager releaseNoteManager;
 
     @Inject
-    private ReleaseNotesConfiguration configuration;
+    private RepresentationFactory representationFactory;
 
     @Inject
-    private RepresentationFactory representationFactory;
+    private ReleaseNotesConfiguration configuration;
 
     @Override
     public ReleaseNotesRepresentation getReleaseNotes(String wikiName, String product) throws ReleaseNotesException
@@ -65,7 +65,7 @@ public class DefaultReleaseNotesResource extends AbstractReleaseNotesResource
         return inWiki(wikiName, () -> {
             ReleaseNotesRepresentation representation = new ReleaseNotesRepresentation();
 
-            for (ReleaseNote note : this.releaseNoteManager.getReleaseNotes(product, this::canView)) {
+            for (ReleaseNote note : this.entryPoint.getReleaseNotes(product, getCaller())) {
                 representation.getReleaseNotes()
                     .add(this.representationFactory.toRepresentation(note, getReference(note)));
             }
@@ -98,17 +98,10 @@ public class DefaultReleaseNotesResource extends AbstractReleaseNotesResource
                 return refuse(Response.Status.BAD_REQUEST, e.getMessage());
             }
 
-            // The product a release note posted without one is created for is the one configured for the wiki, which
-            // is what names its page.
-            String product = StringUtils.isBlank(created.getProduct()) ? this.configuration.getDefaultProduct()
-                : created.getProduct();
-            checkEditRight(
-                this.releaseNoteManager.getReleaseNoteReference(product.trim(), created.getVersion().trim()));
-
             // A release note that already exists, a page that may not be edited and a save that failed are answered
-            // by the exception mapper, which is where every endpoint of the application turns a failure into a
-            // status code.
-            DocumentReference reference = this.releaseNoteManager.createReleaseNote(created);
+            // by the exception mapper, which is where every endpoint of the application turns a failure into a status
+            // code.
+            DocumentReference reference = this.entryPoint.createReleaseNote(created, getCaller());
 
             // The release note is read back rather than echoed, because the values the request left out are supplied
             // during the creation: a release note posted without a product holds the one configured for the wiki.

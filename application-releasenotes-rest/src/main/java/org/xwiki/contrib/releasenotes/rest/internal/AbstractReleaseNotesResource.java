@@ -27,23 +27,22 @@ import jakarta.inject.Named;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesCaller;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.contrib.releasenotes.rest.model.ErrorRepresentation;
 import org.xwiki.model.ModelContext;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.EntityReference;
 import org.xwiki.model.reference.EntityReferenceSerializer;
-import org.xwiki.model.reference.SpaceReference;
 import org.xwiki.model.reference.WikiReference;
 import org.xwiki.rest.internal.Utils;
 import org.xwiki.rest.resources.pages.PageResource;
-import org.xwiki.security.authorization.ContextualAuthorizationManager;
-import org.xwiki.security.authorization.Right;
 
 /**
- * What the endpoints of the application share: running in the wiki the request names, pointing at the page that was
- * created, and refusing a request.
+ * What the endpoints of the application share: running in the wiki the request names, handing the request to
+ * {@link ReleaseNotesEntryPoint}, which checks the rights of its caller, pointing at the page that was created, and
+ * refusing a request.
  *
  * @version $Id$
  * @since 2.7
@@ -57,21 +56,15 @@ public abstract class AbstractReleaseNotesResource
     protected static final String NO_RELEASE_NOTE_IN_URL =
         "A change belongs to the release note of one version of one product, and the URL names neither.";
 
-    /**
-     * The name of the page an entry of a release note, and a release note itself, lives in: the space is what names
-     * them, so that the changes of a release note are the pages under it.
-     */
-    private static final String HOME_PAGE = "WebHome";
-
     @Inject
     protected ModelContext modelContext;
 
     @Inject
-    @Named("local")
-    protected EntityReferenceSerializer<String> localEntityReferenceSerializer;
+    protected ReleaseNotesEntryPoint entryPoint;
 
     @Inject
-    protected ContextualAuthorizationManager authorization;
+    @Named("local")
+    protected EntityReferenceSerializer<String> localEntityReferenceSerializer;
 
     /**
      * What an endpoint does once the wiki of the request is the current one.
@@ -113,46 +106,12 @@ public abstract class AbstractReleaseNotesResource
     }
 
     /**
-     * The components of the application read a page whoever asks for it, since the rights are checked where a request
-     * enters the wiki: this is where a REST request does.
-     *
-     * @param reference a page a client asked to read
-     * @return whether the current user may view that page
+     * @return who a REST request is made for: it runs no script, so the current user is the only one whose rights
+     *         there are to check
      */
-    protected boolean canView(DocumentReference reference)
+    protected ReleaseNotesCaller getCaller()
     {
-        return this.authorization.hasAccess(Right.VIEW, reference);
-    }
-
-    /**
-     * @param reference a page a client asked to read
-     * @throws ReleaseNotesAccessDeniedException when the current user may not view that page, which the exception
-     *             mapper answers with a 401 for a guest and a 403 for anyone else
-     * @see #canView(DocumentReference)
-     */
-    protected void checkViewRight(DocumentReference reference) throws ReleaseNotesAccessDeniedException
-    {
-        if (!canView(reference)) {
-            throw new ReleaseNotesAccessDeniedException(
-                String.format("The current user is not allowed to view the page [%s].", reference), reference);
-        }
-    }
-
-    /**
-     * The components of the application write a page whoever asks them to, since the rights are checked where a
-     * request enters the wiki: this is where a REST request does. A REST request runs no script, so the current user
-     * is the only one whose right there is to check.
-     *
-     * @param reference a page a client asked to write
-     * @throws ReleaseNotesAccessDeniedException when the current user may not edit that page, which the exception
-     *             mapper answers with a 401 for a guest and a 403 for anyone else
-     */
-    protected void checkEditRight(DocumentReference reference) throws ReleaseNotesAccessDeniedException
-    {
-        if (!this.authorization.hasAccess(Right.EDIT, reference)) {
-            throw new ReleaseNotesAccessDeniedException(
-                String.format("The current user is not allowed to edit the page [%s].", reference), reference);
-        }
+        return ReleaseNotesCaller.currentUser();
     }
 
     /**
@@ -168,20 +127,6 @@ public abstract class AbstractReleaseNotesResource
     {
         return Utils.createURI(uriInfo.getBaseUri(), PageResource.class,
             reference.getWikiReference().getName(), Utils.getSpacesURLElements(reference), reference.getName());
-    }
-
-    /**
-     * Gives the page one entry of a release note lives in. The name is built into a reference rather than resolved
-     * from a serialized one, so a name carrying the characters a reference is written with names that page and
-     * nothing else.
-     *
-     * @param noteReference the page of the release note the entry belongs to
-     * @param entry the name of the entry, e.g. {@code Entry001}
-     * @return the page of that entry
-     */
-    protected DocumentReference getEntryReference(DocumentReference noteReference, String entry)
-    {
-        return new DocumentReference(HOME_PAGE, new SpaceReference(entry, noteReference.getLastSpaceReference()));
     }
 
     /**

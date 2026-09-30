@@ -33,7 +33,6 @@ import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
-import org.xwiki.localization.ContextualLocalizationManager;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.EntityReferenceSerializer;
 import org.xwiki.observation.ObservationManager;
@@ -69,10 +68,9 @@ import static org.mockito.Mockito.when;
  */
 @OldcoreTest
 @ReferenceComponentList
-// Locating the release note, taking the page of a new entry, defaulting the product, checking the rights and
-// saving are part of what creating a change is, so the components performing them are the real ones.
-@ComponentList({ DefaultReleaseNoteManager.class, EntryPageAllocator.class, ProductResolver.class,
-    ReleaseNotesDocumentWriter.class })
+// Taking the page of a new entry, defaulting the product and saving are part of what creating a change is, so the
+// components performing them are the real ones.
+@ComponentList({ EntryPageAllocator.class, ProductResolver.class, ReleaseNotesDocumentStore.class })
 class DefaultChangeManagerTest
 {
     private static final String PRODUCT = "XWiki";
@@ -87,11 +85,6 @@ class DefaultChangeManagerTest
 
     @InjectMockitoOldcore
     private MockitoOldcore oldcore;
-
-    // Creating the release note a change belongs to is not what these tests are about, but the manager doing it is
-    // a real component here, and it titles a release note with a translation.
-    @MockComponent
-    private ContextualLocalizationManager localization;
 
     @MockComponent
     private ReleaseNotesConfiguration configuration;
@@ -318,18 +311,20 @@ class DefaultChangeManagerTest
     }
 
     /**
-     * The entry xobject is what identifies and locates a change, and its type is what keeps the contributors of a
-     * release note from being counted among its changes.
+     * The entry xobject is what identifies and locates a change, and its type is what tells a change apart from the
+     * contributors entry of the same release note.
      */
     @Test
     void aCreatedChangeIsAnEntryOfTypeChange() throws Exception
     {
         this.manager.createChange(change());
 
-        BaseObject entry = load(entry("Entry001")).getXObject(ReleaseNotesReferences.ENTRY_CLASS);
-        assertEquals("Change", entry.getStringValue("type"));
-        assertEquals(PRODUCT, entry.getStringValue("product"));
-        assertEquals(VERSION, entry.getStringValue("version"));
+        Change stored = this.manager.getChange(entry("Entry001"));
+        assertEquals(PRODUCT, stored.getProduct());
+        assertEquals(VERSION, stored.getVersion());
+        // The type is not part of a change, since every change has the same, so it is only seen in the entry xobject.
+        assertEquals(ChangeXObjects.CHANGE_TYPE, load(entry("Entry001")).getXObject(ReleaseNotesReferences.ENTRY_CLASS)
+            .getStringValue(ChangeXObjects.TYPE));
     }
 
     /**
@@ -395,8 +390,7 @@ class DefaultChangeManagerTest
 
         assertEquals(List.of("before.png", "after.png"),
             this.manager.updateChange(entry("Entry001"), replacement).getScreenshots());
-        assertEquals("before.png,after.png", load(entry("Entry001"))
-            .getXObject(ReleaseNotesReferences.CHANGE_CLASS).getStringValue("screenshots"));
+        assertEquals(List.of("before.png", "after.png"), this.manager.getChange(entry("Entry001")).getScreenshots());
     }
 
     /**
@@ -409,10 +403,12 @@ class DefaultChangeManagerTest
         this.manager.createChange(change());
         this.manager.updateChange(entry("Entry001"), change());
 
-        BaseObject entry = load(entry("Entry001")).getXObject(ReleaseNotesReferences.ENTRY_CLASS);
-        assertEquals("Change", entry.getStringValue("type"));
-        assertEquals(PRODUCT, entry.getStringValue("product"));
-        assertEquals(VERSION, entry.getStringValue("version"));
+        Change stored = this.manager.getChange(entry("Entry001"));
+        assertEquals(PRODUCT, stored.getProduct());
+        assertEquals(VERSION, stored.getVersion());
+        // The type is not part of a change, since every change has the same, so it is only seen in the entry xobject.
+        assertEquals(ChangeXObjects.CHANGE_TYPE, load(entry("Entry001")).getXObject(ReleaseNotesReferences.ENTRY_CLASS)
+            .getStringValue(ChangeXObjects.TYPE));
     }
 
     /**
@@ -468,22 +464,6 @@ class DefaultChangeManagerTest
         when(this.changeSearcher.search(query, filter)).thenReturn(result);
 
         assertSame(result, this.manager.search(query, filter));
-    }
-
-    /**
-     * The media of a change are stored as one comma-separated value, with the spaces around the commas ignored, the
-     * way the screenshot displayer reads them back.
-     */
-    @Test
-    void theMediaOfAChangeAreReadBackAsAList() throws Exception
-    {
-        this.manager.createChange(change());
-        XWikiDocument entryPage = load(entry("Entry001"));
-        entryPage.getXObject(ReleaseNotesReferences.CHANGE_CLASS)
-            .setStringValue("screenshots", "one.png ,  two.mp4 ,");
-        this.oldcore.getSpyXWiki().saveDocument(entryPage, this.oldcore.getXWikiContext());
-
-        assertEquals(List.of("one.png", "two.mp4"), this.manager.getChange(entry("Entry001")).getScreenshots());
     }
 
     private Change change()

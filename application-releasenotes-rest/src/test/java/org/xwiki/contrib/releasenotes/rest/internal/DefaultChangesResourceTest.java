@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jakarta.inject.Provider;
 
 import javax.inject.Named;
 import javax.ws.rs.WebApplicationException;
@@ -43,7 +42,12 @@ import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
+import org.xwiki.contrib.releasenotes.internal.ProductResolver;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ErrorRepresentation;
@@ -52,6 +56,7 @@ import org.xwiki.model.internal.reference.DefaultSymbolScheme;
 import org.xwiki.model.internal.reference.LocalStringEntityReferenceSerializer;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.DocumentReferenceResolver;
+import org.xwiki.security.authorization.AuthorizationManager;
 import org.xwiki.security.authorization.ContextualAuthorizationManager;
 import org.xwiki.security.authorization.Right;
 import org.xwiki.test.annotation.ComponentList;
@@ -59,9 +64,7 @@ import org.xwiki.test.junit5.mockito.ComponentTest;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
 import org.xwiki.test.junit5.mockito.MockComponent;
 
-import com.xpn.xwiki.XWiki;
-import com.xpn.xwiki.XWikiContext;
-import com.xpn.xwiki.XWikiException;
+import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -82,7 +85,8 @@ import static org.mockito.Mockito.when;
 @ComponentTest
 // Reading what a client posted and writing back what it reads is part of what the endpoint answers, so the factory
 // and the serializer it uses are the real ones.
-@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class })
+@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class,
+    ReleaseNotesEntryPoint.class, ProductResolver.class })
 class DefaultChangesResourceTest
 {
     private static final String NO_RELEASE_NOTE_IN_URL =
@@ -111,6 +115,15 @@ class DefaultChangesResourceTest
     private ChangeQueryParser changeQueryParser;
 
     @MockComponent
+    private AuthorizationManager authorAuthorization;
+
+    @MockComponent
+    private ReleaseNotesDocumentStore documentStore;
+
+    @MockComponent
+    private ReleaseNotesConfiguration configuration;
+
+    @MockComponent
     private ModelContext modelContext;
 
     @MockComponent
@@ -120,12 +133,9 @@ class DefaultChangesResourceTest
     @Named("current")
     private DocumentReferenceResolver<String> documentReferenceResolver;
 
-    @MockComponent
-    private Provider<XWikiContext> xcontextProvider;
-
-    private XWiki wiki;
-
     private UriInfo uriInfo;
+
+    private XWikiDocument noteDocument;
 
     @BeforeEach
     void setUp() throws Exception
@@ -134,11 +144,8 @@ class DefaultChangesResourceTest
         this.uriInfo = mock(UriInfo.class);
         when(this.uriInfo.getBaseUri()).thenReturn(URI.create("http://localhost:8080/xwiki/rest"));
 
-        XWikiContext xcontext = mock(XWikiContext.class);
-        this.wiki = mock(XWiki.class);
-        when(xcontext.getWiki()).thenReturn(this.wiki);
-        when(this.xcontextProvider.get()).thenReturn(xcontext);
-        when(this.wiki.exists(RELEASE_NOTE, xcontext)).thenReturn(true);
+        this.noteDocument = mock(XWikiDocument.class);
+        when(this.documentStore.load(RELEASE_NOTE)).thenReturn(this.noteDocument);
 
         when(this.releaseNoteManager.getReleaseNoteReference(PRODUCT, VERSION)).thenReturn(RELEASE_NOTE);
         when(this.changeQueryParser.parse(any())).thenReturn(new ChangeQuery());
@@ -244,6 +251,10 @@ class DefaultChangesResourceTest
             () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted));
 
         assertEquals(RELEASE_NOTE, exception.getReference());
+        // The right is checked before what was posted is read: a user who may not add a change is told so, and not
+        // what is wrong with the change.
+        assertThrows(ReleaseNotesAccessDeniedException.class,
+            () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, new ChangeRepresentation()));
         verify(this.changeManager, never()).createChange(any());
     }
 
@@ -310,15 +321,21 @@ class DefaultChangesResourceTest
     @Test
     void aChangePostedToAReleaseNoteThatDoesNotExistIsRefused() throws Exception
     {
-        when(this.wiki.exists(any(DocumentReference.class), any(XWikiContext.class))).thenReturn(false);
+        when(this.noteDocument.isNew()).thenReturn(true);
 
         ChangeRepresentation posted = new ChangeRepresentation();
         posted.setTitle("The title");
 
-        Response response = this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, "9.0", posted);
+        Response response = this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted);
 
-        assertRefusal(response, Response.Status.NOT_FOUND, "There is no release note for the version [9.0] of "
-            + "[XWiki].");
+        assertRefusal(response, Response.Status.NOT_FOUND,
+            String.format("There is no release note for the version [%s] of [XWiki].", VERSION));
+        assertEquals("ReleaseNotes.Data.XWiki.8\\.3.WebHome",
+            ((ErrorRepresentation) response.getEntity()).getReference());
+        // The release note is looked for before the change is read, as it always was.
+        assertRefusal(this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, new ChangeRepresentation()),
+            Response.Status.NOT_FOUND, String.format("There is no release note for the version [%s] of [XWiki].",
+                VERSION));
         verify(this.changeManager, never()).createChange(any());
     }
 
@@ -341,9 +358,8 @@ class DefaultChangesResourceTest
     @Test
     void aStoreThatWillNotSayWhetherTheReleaseNoteExistsFails() throws Exception
     {
-        when(this.wiki.exists(any(DocumentReference.class), any(XWikiContext.class)))
-            .thenThrow(new XWikiException(XWikiException.MODULE_XWIKI_STORE,
-                XWikiException.ERROR_XWIKI_STORE_HIBERNATE_READING_DOC, "The store would not answer."));
+        when(this.documentStore.load(RELEASE_NOTE)).thenThrow(new ReleaseNotesException(
+            "Failed to load the page [xwiki:ReleaseNotes.Data.XWiki.8\\.3.WebHome]."));
 
         ChangeRepresentation posted = new ChangeRepresentation();
         posted.setTitle("The title");
@@ -351,8 +367,8 @@ class DefaultChangesResourceTest
         ReleaseNotesException exception = assertThrows(ReleaseNotesException.class,
             () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted));
 
-        assertEquals("Failed to look up the page [xwiki:ReleaseNotes.Data.XWiki.8\\.3.WebHome].",
-            exception.getMessage());
+        assertFalse(exception instanceof ReleaseNotesNotFoundException, "A broken store is not an empty one.");
+        verify(this.changeManager, never()).createChange(any());
     }
 
     @Test

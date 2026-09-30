@@ -69,9 +69,9 @@ import static org.mockito.Mockito.when;
  */
 @OldcoreTest
 @ReferenceComponentList
-// The product defaulting, the right checks and the save are part of what creating a release note is, so the
-// components performing them are the real ones.
-@ComponentList({ ProductResolver.class, ReleaseNotesDocumentWriter.class })
+// The product defaulting and the save are part of what creating a release note is, so the components performing
+// them are the real ones.
+@ComponentList({ ProductResolver.class, ReleaseNotesDocumentStore.class })
 class DefaultReleaseNoteManagerTest
 {
     private static final String PRODUCT = "XWiki";
