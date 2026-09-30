@@ -311,8 +311,8 @@ class DefaultChangeManagerTest
     }
 
     /**
-     * The entry xobject is what identifies and locates a change, and its type is what keeps the contributors of a
-     * release note from being counted among its changes.
+     * The entry xobject is what identifies and locates a change, and its type is what tells a change apart from the
+     * contributors entry of the same release note.
      */
     @Test
     void aCreatedChangeIsAnEntryOfTypeChange() throws Exception

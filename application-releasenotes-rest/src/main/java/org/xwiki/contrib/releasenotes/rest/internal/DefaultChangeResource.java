@@ -29,9 +29,9 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.Change;
-import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesReferences;
 import org.xwiki.contrib.releasenotes.rest.ChangeResource;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.model.reference.DocumentReference;
@@ -57,9 +57,6 @@ public class DefaultChangeResource extends AbstractReleaseNotesResource
             + "name all three.";
 
     @Inject
-    private ChangeManager changeManager;
-
-    @Inject
     private ReleaseNoteManager releaseNoteManager;
 
     @Inject
@@ -75,9 +72,9 @@ public class DefaultChangeResource extends AbstractReleaseNotesResource
             }
 
             DocumentReference reference = getChangeReference(product, version, entry);
-            checkViewRight(reference);
 
-            return this.representationFactory.toRepresentation(this.changeManager.getChange(reference), reference);
+            return this.representationFactory.toRepresentation(this.entryPoint.getChange(reference, getCaller()),
+                reference);
         });
     }
 
@@ -102,13 +99,13 @@ public class DefaultChangeResource extends AbstractReleaseNotesResource
                 return refuse(Response.Status.BAD_REQUEST, e.getMessage());
             }
 
-            // An entry that holds no change is answered by the exception mapper with a 404, which is where every
-            // endpoint of the application turns a failure into a status code.
+            // A page that may not be edited and an entry that holds no change are answered by the exception mapper,
+            // which is where every endpoint of the application turns a failure into a status code.
             DocumentReference reference = getChangeReference(product, version, entry);
-            checkEditRight(reference);
 
             return Response.ok(this.representationFactory
-                .toRepresentation(this.changeManager.updateChange(reference, replacement), reference)).build();
+                .toRepresentation(this.entryPoint.updateChange(reference, replacement, getCaller()), reference))
+                .build();
         });
     }
 
@@ -120,7 +117,7 @@ public class DefaultChangeResource extends AbstractReleaseNotesResource
      */
     private DocumentReference getChangeReference(String product, String version, String entry)
     {
-        return getEntryReference(this.releaseNoteManager.getReleaseNoteReference(product, version), entry);
+        return ReleaseNotesReferences.entry(this.releaseNoteManager.getReleaseNoteReference(product, version), entry);
     }
 
     /**

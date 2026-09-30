@@ -100,8 +100,8 @@ public class EntryPageAllocator
         int highestNumber = getHighestEntryNumber(versionSpace);
 
         for (int number = highestNumber + 1; number <= highestNumber + CANDIDATE_COUNT; number++) {
-            DocumentReference candidate = new DocumentReference("WebHome",
-                new SpaceReference(String.format(ENTRY_NAME_FORMAT, number), versionSpace));
+            DocumentReference candidate =
+                ReleaseNotesReferences.entry(noteReference, String.format(ENTRY_NAME_FORMAT, number));
             XWikiDocument document = this.documentStore.load(candidate);
 
             if (document.isNew()) {
