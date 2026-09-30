@@ -19,8 +19,6 @@
  */
 package org.xwiki.contrib.releasenotes.internal;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
@@ -29,21 +27,18 @@ import jakarta.inject.Singleton;
 
 import org.apache.commons.lang3.StringUtils;
 import org.xwiki.component.annotation.Component;
-import org.xwiki.contrib.releasenotes.Audience;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
-import org.xwiki.contrib.releasenotes.Importance;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
-import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
+import org.xwiki.contrib.releasenotes.internal.ChangeXObjects.WriteMode;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.stability.Unstable;
 
 import com.xpn.xwiki.XWikiContext;
 import com.xpn.xwiki.XWikiException;
 import com.xpn.xwiki.doc.XWikiDocument;
-import com.xpn.xwiki.objects.BaseObject;
 
 /**
  * Default implementation of {@link ChangeManager}, which holds the changes of a release note in the {@code Entry###}
@@ -58,41 +53,6 @@ import com.xpn.xwiki.objects.BaseObject;
 public class DefaultChangeManager implements ChangeManager
 {
     /**
-     * The value the {@code type} property of an entry holds when that entry is a change and not the contributors of
-     * the release note. Every query looking for changes filters on it.
-     */
-    private static final String CHANGE_TYPE = "Change";
-
-    /**
-     * The media of a change are stored as one comma-separated value, so a media name holding a comma cannot be
-     * stored.
-     */
-    private static final String SCREENSHOT_SEPARATOR = ",";
-
-    private static final String PRODUCT = "product";
-
-    private static final String VERSION = "version";
-
-    private static final String TITLE = "title";
-
-    private static final String SUMMARY = "summary";
-
-    private static final String DESCRIPTION = "description";
-
-    private static final String AUDIENCE = "audience";
-
-    private static final String IMPORTANCE = "importance";
-
-    private static final String CATEGORY = "category";
-
-    private static final String SCREENSHOTS = "screenshots";
-
-    /**
-     * What a caller is told about a page it asked to read or to replace the change of, and that holds none.
-     */
-    private static final String NO_CHANGE = "The page [%s] holds no change.";
-
-    /**
      * What a change with no title is refused with, both when it is created and when it is replaced: a change with no
      * title is displayed as an empty line by every displayer, which makes it look like the change is missing rather
      * than like its title is.
@@ -106,7 +66,7 @@ public class DefaultChangeManager implements ChangeManager
     private ProductResolver productResolver;
 
     @Inject
-    private ReleaseNotesDocumentWriter documentWriter;
+    private ReleaseNotesDocumentStore documentStore;
 
     @Inject
     private EntryPageAllocator entryPageAllocator;
@@ -123,9 +83,7 @@ public class DefaultChangeManager implements ChangeManager
             throw new ReleaseNotesException("A change needs the version it was made in.");
         }
 
-        String title = StringUtils.trimToNull(change.getTitle());
-
-        if (title == null) {
+        if (StringUtils.isBlank(change.getTitle())) {
             throw new ReleaseNotesException(NO_TITLE);
         }
 
@@ -146,39 +104,16 @@ public class DefaultChangeManager implements ChangeManager
             document.readFromTemplate(templateReference, xcontext);
             // A change enforces its required rights when its template does. That is set here because applying a
             // template does not carry the setting over on every XWiki version the application supports.
-            document.setEnforceRequiredRights(
-                loadDocument(templateReference, xcontext).isEnforceRequiredRights());
+            document.setEnforceRequiredRights(this.documentStore.load(templateReference).isEnforceRequiredRights());
 
-            BaseObject entry = document.getXObject(ReleaseNotesReferences.ENTRY_CLASS, true, xcontext);
-            entry.set(PRODUCT, product, xcontext);
-            entry.set(VERSION, version, xcontext);
-            entry.set("type", CHANGE_TYPE, xcontext);
-
-            BaseObject changeObject = document.getXObject(ReleaseNotesReferences.CHANGE_CLASS, true, xcontext);
-            changeObject.set(TITLE, title, xcontext);
-            // Only the values the change carries are set, so that the ones it leaves out keep the default the
-            // template gives them, which is what a template is for.
-            setIfNotNull(changeObject, SUMMARY, change.getSummary(), xcontext);
-            setIfNotNull(changeObject, DESCRIPTION, change.getDescription(), xcontext);
-            setIfNotNull(changeObject, CATEGORY, change.getCategory(), xcontext);
-
-            if (change.getAudience() != null) {
-                changeObject.set(AUDIENCE, change.getAudience().getStoredValue(), xcontext);
-            }
-
-            if (change.getImportance() != null) {
-                changeObject.set(IMPORTANCE, change.getImportance().getStoredValue(), xcontext);
-            }
-
-            if (change.getScreenshots() != null) {
-                changeObject.set(SCREENSHOTS, String.join(SCREENSHOT_SEPARATOR, change.getScreenshots()), xcontext);
-            }
+            ChangeXObjects.writeEntry(document, product, version, xcontext);
+            ChangeXObjects.writeChange(document, change, WriteMode.OVER_TEMPLATE, xcontext);
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to fill the page [%s] of the new change.", document.getDocumentReference()), e);
         }
 
-        this.documentWriter.save(document, "New change");
+        this.documentStore.save(document, "New change");
 
         return document.getDocumentReference();
     }
@@ -186,46 +121,25 @@ public class DefaultChangeManager implements ChangeManager
     @Override
     public Change updateChange(DocumentReference reference, Change change) throws ReleaseNotesException
     {
-        String title = StringUtils.trimToNull(change.getTitle());
-
-        if (title == null) {
+        if (StringUtils.isBlank(change.getTitle())) {
             throw new ReleaseNotesException(NO_TITLE);
         }
 
-        XWikiContext xcontext = this.xcontextProvider.get();
         // The page exists, and the instance the store answers with for a page that exists is the one it holds in its
         // cache, which a caller must not write into: what is modified here is a copy of it, and the save is what
         // makes the wiki hold it.
-        XWikiDocument document = loadDocument(reference, xcontext).clone();
-        BaseObject entry = document.getXObject(ReleaseNotesReferences.ENTRY_CLASS);
-        BaseObject changeObject = document.getXObject(ReleaseNotesReferences.CHANGE_CLASS);
-
-        if (entry == null || changeObject == null) {
-            throw new ReleaseNotesNotFoundException(String.format(NO_CHANGE, reference), reference);
-        }
+        XWikiDocument document = this.documentStore.load(reference).clone();
 
         try {
-            // Every property is written, and not only the ones the passed change carries: this replaces the change,
-            // so what the caller left out is emptied rather than kept. The change template has no say here either,
-            // for the same reason.
-            changeObject.set(TITLE, title, xcontext);
-            changeObject.set(SUMMARY, StringUtils.defaultString(change.getSummary()), xcontext);
-            changeObject.set(DESCRIPTION, StringUtils.defaultString(change.getDescription()), xcontext);
-            changeObject.set(CATEGORY, StringUtils.defaultString(change.getCategory()), xcontext);
-            changeObject.set(AUDIENCE,
-                change.getAudience() == null ? "" : change.getAudience().getStoredValue(), xcontext);
-            changeObject.set(IMPORTANCE,
-                change.getImportance() == null ? "" : change.getImportance().getStoredValue(), xcontext);
-            changeObject.set(SCREENSHOTS, change.getScreenshots() == null ? ""
-                : String.join(SCREENSHOT_SEPARATOR, change.getScreenshots()), xcontext);
+            ChangeXObjects.writeChange(document, change, WriteMode.REPLACE, this.xcontextProvider.get());
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to write the change of the page [%s].", reference), e);
         }
 
-        this.documentWriter.save(document, "Updated change");
+        this.documentStore.save(document, "Updated change");
 
-        return toChange(entry, changeObject);
+        return ChangeXObjects.read(document);
     }
 
     @Override
@@ -239,7 +153,7 @@ public class DefaultChangeManager implements ChangeManager
             return null;
         }
 
-        this.documentWriter.save(document, "Take the page of a new release note entry");
+        this.documentStore.save(document, "Take the page of a new release note entry");
 
         return document.getDocumentReference();
     }
@@ -247,16 +161,7 @@ public class DefaultChangeManager implements ChangeManager
     @Override
     public Change getChange(DocumentReference reference) throws ReleaseNotesException
     {
-        XWikiContext xcontext = this.xcontextProvider.get();
-        XWikiDocument document = loadDocument(reference, xcontext);
-        BaseObject entry = document.getXObject(ReleaseNotesReferences.ENTRY_CLASS);
-        BaseObject changeObject = document.getXObject(ReleaseNotesReferences.CHANGE_CLASS);
-
-        if (entry == null || changeObject == null) {
-            throw new ReleaseNotesNotFoundException(String.format(NO_CHANGE, reference), reference);
-        }
-
-        return toChange(entry, changeObject);
+        return ChangeXObjects.read(this.documentStore.load(reference));
     }
 
     @Override
@@ -264,57 +169,5 @@ public class DefaultChangeManager implements ChangeManager
         throws ReleaseNotesException
     {
         return this.changeSearcher.search(query, filter);
-    }
-
-    /**
-     * @param entry the entry object of the page of a change, which says which release note it belongs to
-     * @param changeObject the change object of that page, which says what the change is
-     * @return the change those two objects hold
-     */
-    private Change toChange(BaseObject entry, BaseObject changeObject)
-    {
-        Change change = new Change();
-        change.setProduct(entry.getStringValue(PRODUCT));
-        change.setVersion(entry.getStringValue(VERSION));
-        change.setTitle(changeObject.getStringValue(TITLE));
-        change.setSummary(changeObject.getLargeStringValue(SUMMARY));
-        change.setDescription(changeObject.getLargeStringValue(DESCRIPTION));
-        change.setAudience(Audience.fromStoredValue(changeObject.getStringValue(AUDIENCE)));
-        change.setImportance(Importance.fromStoredValue(changeObject.getStringValue(IMPORTANCE)));
-        change.setCategory(changeObject.getStringValue(CATEGORY));
-        change.setScreenshots(splitScreenshots(changeObject.getStringValue(SCREENSHOTS)));
-
-        return change;
-    }
-
-    private List<String> splitScreenshots(String screenshots)
-    {
-        List<String> mediaNames = new ArrayList<>();
-
-        for (String mediaName : StringUtils.split(StringUtils.defaultString(screenshots), SCREENSHOT_SEPARATOR)) {
-            if (StringUtils.isNotBlank(mediaName)) {
-                mediaNames.add(mediaName.trim());
-            }
-        }
-
-        return mediaNames;
-    }
-
-    private void setIfNotNull(BaseObject object, String property, String value, XWikiContext xcontext)
-        throws XWikiException
-    {
-        if (value != null) {
-            object.set(property, value, xcontext);
-        }
-    }
-
-    private XWikiDocument loadDocument(DocumentReference reference, XWikiContext xcontext)
-        throws ReleaseNotesException
-    {
-        try {
-            return xcontext.getWiki().getDocument(reference, xcontext);
-        } catch (XWikiException e) {
-            throw new ReleaseNotesException(String.format("Failed to load the page [%s].", reference), e);
-        }
     }
 }

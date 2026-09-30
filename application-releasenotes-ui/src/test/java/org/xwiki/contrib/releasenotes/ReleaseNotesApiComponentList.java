@@ -33,7 +33,7 @@ import org.xwiki.contrib.releasenotes.internal.DefaultReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.internal.DefaultReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.internal.EntryPageAllocator;
 import org.xwiki.contrib.releasenotes.internal.ProductResolver;
-import org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentWriter;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore;
 import org.xwiki.contrib.releasenotes.internal.converter.ChangeConverter;
 import org.xwiki.contrib.releasenotes.internal.converter.ReleaseNoteConverter;
 import org.xwiki.contrib.releasenotes.script.ReleaseNotesScriptService;
@@ -58,7 +58,7 @@ import org.xwiki.test.annotation.ComponentList;
     DefaultReleaseNotesConfiguration.class,
     EntryPageAllocator.class,
     ProductResolver.class,
-    ReleaseNotesDocumentWriter.class,
+    ReleaseNotesDocumentStore.class,
     ChangeConverter.class,
     ReleaseNoteConverter.class
 })
