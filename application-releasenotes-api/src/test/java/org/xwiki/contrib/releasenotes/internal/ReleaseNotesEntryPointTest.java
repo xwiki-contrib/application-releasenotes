@@ -303,6 +303,24 @@ class ReleaseNotesEntryPointTest
     }
 
     /**
+     * The page taken for a new entry is under its release note too, and the "add change" form of the home page lets
+     * its author type any version. Taking a page under a release note that does not exist would leave an entry that
+     * nothing lists.
+     */
+    @Test
+    void anEntryIsNotReservedForAReleaseNoteThatDoesNotExist() throws Exception
+    {
+        when(this.noteDocument.isNew()).thenReturn(true);
+
+        ReleaseNotesNotFoundException exception = assertThrows(ReleaseNotesNotFoundException.class,
+            () -> this.entryPoint.reserveNextEntry("XWiki", "8.3", SCRIPT));
+
+        assertEquals("There is no release note for the version [8.3] of [XWiki].", exception.getMessage());
+        assertEquals(RELEASE_NOTE, exception.getReference());
+        verify(this.changeManager, never()).reserveNextEntry(any(), any());
+    }
+
+    /**
      * A write with no version names no page whose right could be checked, so it is handed to the manager, which
      * refuses it, as the script service did before this component existed.
      */

@@ -195,6 +195,7 @@ public class ReleaseNotesScriptService implements ScriptService
      * @return the page that was taken, or {@code null} when no page name was free
      * @throws ReleaseNotesAccessDeniedException when the current user or the author of the calling script may not
      *             edit the page
+     * @throws ReleaseNotesNotFoundException when there is no release note for that version, since 2.8
      * @throws ReleaseNotesException when the page could not be taken
      * @see ChangeManager#reserveNextEntry(String, String)
      */

@@ -71,7 +71,23 @@
       #set ($entryPageReference = $services.releasenotes.reserveNextEntry($product, $version))
       #set ($shortVersion = $services.releasenotes.getReleaseNoteReference($product, $version).parent.name)
     #end
+    ## A change is only added to a release note that exists: the form of the home page lets its author type any
+    ## version, and a page taken under a release note that does not exist would hold a change nothing lists. The API
+    ## refuses it, and the author is told why rather than handed the generic failure. The exception is wrapped by the
+    ## Velocity call that threw it, hence the look through its causes, and it is recognised by its string form, which
+    ## starts with its class name, because the methods of a Class cannot be called from Velocity.
+    #set ($releaseNoteNotFound = false)
     #if ($reserveException)
+      #foreach ($throwable in $exceptiontool.getThrowableList($reserveException))
+        #if ($throwable.toString().startsWith('org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException:'))
+          #set ($releaseNoteNotFound = true)
+        #end
+      #end
+    #end
+    #if ($releaseNoteNotFound)
+      {{error}}{{translation key="releasenotes.entry.releaseNoteNotFound"/}}{{/error}}
+
+    #elseif ($reserveException)
       {{error}}{{translation key="releasenotes.entry.addFailed"/}}{{/error}}
 
     #elseif ("$!entryPageReference" == '')
