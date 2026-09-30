@@ -57,11 +57,7 @@
 #end
 (% class="rn-changes-grid" style="--rn-changes-grid-columns: $gridColumns" %)(((
 #foreach ($item in $changeItems)
-  #set ($changeDoc = $xwiki.getDocument($item))
-  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
-  #set ($description = "$!changeObject.getValue('description')")
-  #generateDisplayEditLink($displayEditLink, $changeDoc)
+  #loadChangeView($item, $displayEditLink)
   (% class="rn-change-card" %)(((
   ## The title comes first so that the media below it can only be read as illustrating this change.
   #if ($title != '')
@@ -77,13 +73,10 @@
   #displayScreenshots($changeObject, true, true)
   )))
 
-  ## Display the summary through the change document, so that its rich text is rendered in the context of that
-  ## document rather than of this displayer, the way the change's own page renders it.
-  $changeDoc.display('summary', 'view', $changeObject)#if ($title == '')${displayEditLinkMarkup}#end
+  $changeSummary$summaryEditLinkMarkup
+  #if ($moreDetailsLinkMarkup != '')
 
-  #if ($description != '')
-
-  (% class="rn-change-details" %)[[${moreDetailsLabel}&gt;&gt;doc:$changeDoc.documentReference]]
+  (% class="rn-change-details" %)$moreDetailsLinkMarkup
   #end
   )))
 #end

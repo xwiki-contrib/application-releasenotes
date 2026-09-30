@@ -44,14 +44,9 @@
 ## - $changeItems
 ## - $displayEditLink
 #foreach ($item in $changeItems)
-  #set ($changeDoc = $xwiki.getDocument($item))
-  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
-  #generateDisplayEditLink($displayEditLink, $changeDoc)##
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))##
+  #loadChangeView($item, $displayEditLink)##
   * (((
-## Display the summary through the change document, so that its rich text is rendered in the context of that
-## document rather than of this displayer, the way the change's own page renders it.
-#if ("$!title" != '')$title~: #end$changeDoc.display('summary', 'view', $changeObject)
+#if ("$!title" != '')$title~: #end$changeSummary
 )))${displayEditLinkMarkup}
 #end
 {{/velocity}}</content>
