@@ -59,7 +59,7 @@ final class ReleaseNotesXClasses
         BaseClass entryClass = createClass(oldcore, ReleaseNotesReferences.ENTRY_CLASS);
         entryClass.addDBListField("product", "Product", "");
         entryClass.addDBListField("version", "Version", "");
-        entryClass.addStaticListField("type", "Type", "Change|Contributors");
+        entryClass.addStaticListField("type", "Type", "Change|Contributors|Translators");
         saveClass(oldcore, entryClass);
 
         BaseClass changeClass = createClass(oldcore, ReleaseNotesReferences.CHANGE_CLASS);

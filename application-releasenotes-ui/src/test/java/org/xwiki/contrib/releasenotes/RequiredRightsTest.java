@@ -91,6 +91,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/ReleaseNotesChangesMacro", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/HTML5Video", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ReleaseNotesContributorsMacro", WIKI_ADMIN);
+        EXPECTED_RIGHTS.put("Code/ReleaseNotesTranslatorsMacro", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ApplicationsPanelEntry", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/Translations", WIKI_ADMIN);
         // The analyzer computes script for the migration, seeing only a Velocity macro. It stays at wiki_admin: the
@@ -106,6 +107,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/ChangeDisplayerVelocityMacros", SCRIPT);
         EXPECTED_RIGHTS.put("Code/Change/ChangeSheet", SCRIPT);
         EXPECTED_RIGHTS.put("Code/ContributorsSheet", SCRIPT);
+        EXPECTED_RIGHTS.put("Code/TranslatorsSheet", SCRIPT);
         EXPECTED_RIGHTS.put("Code/EntryVelocityMacros", SCRIPT);
         EXPECTED_RIGHTS.put("Code/HomeCustomReport", SCRIPT);
         EXPECTED_RIGHTS.put("Code/HomeReleaseChanges", SCRIPT);
@@ -117,6 +119,8 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/WebHome", NOTHING);
         EXPECTED_RIGHTS.put("Code/ContributorsClass", NOTHING);
         EXPECTED_RIGHTS.put("Code/ContributorsTemplate", NOTHING);
+        EXPECTED_RIGHTS.put("Code/TranslatorsClass", NOTHING);
+        EXPECTED_RIGHTS.put("Code/TranslatorsTemplate", NOTHING);
         EXPECTED_RIGHTS.put("Code/EntryClass", NOTHING);
         EXPECTED_RIGHTS.put("Code/ReleaseNoteClass", NOTHING);
         // The template is copied onto every release note created from it, so what it asks for is what a release note
