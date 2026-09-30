@@ -83,6 +83,14 @@ public interface ChangeQueryParser
     String OFFSET = "offset";
 
     /**
+     * The parameter holding the pages of the changes to leave out even when they match, as a comma-separated list of
+     * page names.
+     *
+     * @since 2.8
+     */
+    String EXCLUSIONS = "exclusions";
+
+    /**
      * Reads the passed parameters into a query.
      * <p>
      * A parameter that is absent or {@code null} leaves the property it filters unrestricted, whereas a parameter

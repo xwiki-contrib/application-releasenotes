@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
@@ -123,7 +124,14 @@ public class ChangeSearcher
             serialize(ReleaseNotesReferences.CHANGE_CLASS), CHANGE_ALIAS, String.join(" and ", conditions),
             CHANGE_ALIAS, ChangeXObjects.IMPORTANCE);
 
-        return executeSearch(statement, bindings, query, filter);
+        // The excluded changes are left out along with the ones the filter refuses, i.e. before the page is cut, so
+        // that an excluded change neither takes the place of a change that follows it nor makes the search report a
+        // next page that holds nothing but excluded changes.
+        Set<DocumentReference> exclusions = query.getExclusions();
+        Predicate<DocumentReference> accepted =
+            exclusions.isEmpty() ? filter : filter.and(reference -> !exclusions.contains(reference));
+
+        return executeSearch(statement, bindings, query, accepted);
     }
 
     /**
@@ -141,7 +149,7 @@ public class ChangeSearcher
         int batchSize = (int) Math.min(Integer.MAX_VALUE, (long) query.getOffset() + query.getLimit() + 1);
         int skipped = 0;
         // The page is a list of its own rather than a view of the rows, so that the caller may modify the list it is
-        // given: the pages displaying the changes of a release note take their own exclusions out of it.
+        // given: the getChanges macro publishes it to wiki pages, which may take changes out of it on their own.
         List<String> names = new ArrayList<>();
         List<DocumentReference> references = new ArrayList<>();
 

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.jsoup.nodes.Document;
@@ -58,6 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -182,6 +184,29 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
 
         assertEquals(AUDIENCE_COUNT, renderReleaseNote(2).select("div.warningmessage").size(),
             "Each section of the release note left a change out, so each of them must report it.");
+    }
+
+    /**
+     * An excluded change is left out before the limit applies: it must neither take the place of a change the
+     * section can display, nor make the section report changes it left out when it left out nothing but it.
+     */
+    @Test
+    void excludedChangeDoesNotCountAgainstTheLimit() throws Exception
+    {
+        // One change more than the sections are allowed to display, the first of which is excluded. Those are all the
+        // rows the database holds: the search reads a second batch to fill the page, and that one has to be empty.
+        AtomicInteger offset = new AtomicInteger();
+        when(this.query.setOffset(anyInt())).thenAnswer(invocation -> {
+            offset.set(invocation.getArgument(0));
+            return this.query;
+        });
+        when(this.query.execute()).thenAnswer(invocation -> offset.get() == 0 ? changes(3) : List.of());
+
+        Document releaseNote = renderReleaseNote("8.3", "8.3", PRODUCT,
+            String.format("limit=\"2\" exclusions=\"%s\"", changes(1).get(0)));
+
+        assertEquals(0, releaseNote.select("div.warningmessage").size(),
+            "Every change that is not excluded fits in the limit, so no section left a change out.");
     }
 
     @Test
@@ -507,6 +532,19 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     private Document renderReleaseNote(String shortVersion, String version, String product, int limit)
         throws Exception
     {
+        return renderReleaseNote(shortVersion, version, product, String.format("limit=\"%s\"", limit));
+    }
+
+    /**
+     * @param shortVersion the name of the space holding the release note
+     * @param version the value stored in the {@code version} field of the release note xobject
+     * @param product the value stored in the {@code product} field of the release note xobject
+     * @param macroParameters the parameters of the macro call, as they are written in wiki syntax
+     * @return the rendered release note
+     */
+    private Document renderReleaseNote(String shortVersion, String version, String product, String macroParameters)
+        throws Exception
+    {
         loadPage(RELEASE_NOTE_CLASS);
 
         XWikiDocument releaseNote = new XWikiDocument(new DocumentReference("xwiki",
@@ -515,7 +553,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         BaseObject releaseNoteObject = releaseNote.newXObject(RELEASE_NOTE_CLASS, this.context);
         releaseNoteObject.setStringValue("product", product);
         releaseNoteObject.setStringValue("version", version);
-        releaseNote.setContent(String.format("{{releasenotechanges limit=\"%s\"/}}", limit));
+        releaseNote.setContent(String.format("{{releasenotechanges %s/}}", macroParameters));
         this.xwiki.saveDocument(releaseNote, this.context);
         // The macro reads the version off the page it is on, so that page has to be the one in the context.
         this.context.setDoc(releaseNote);

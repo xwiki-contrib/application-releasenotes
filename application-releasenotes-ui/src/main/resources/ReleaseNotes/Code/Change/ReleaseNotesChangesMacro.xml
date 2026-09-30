@@ -156,13 +156,7 @@
       <code>{{include reference="ReleaseNotes.Code.EntryVelocityMacros"/}}
 
 {{velocity output="false"}}
-#set ($exclusions = "$!wikimacro.parameters.exclusions")
-#set ($exclusions = $exclusions.split('\s*,\s*'))
 #set ($changesLimit = "$!wikimacro.parameters.limit")
-
-#macro (removeExcludedChanges $changes)
-  #set ($discard = $changes.removeAll($exclusions))
-#end
 
 ## Each section is a page of changes, so it can leave changes out. Say so rather than let a release note look
 ## complete while it is not: this is the only sign an author gets that the limit needs raising.
@@ -191,6 +185,10 @@
 ## page name.
 #set ($escapedProduct = $services.rendering.escape("$!product", 'xwiki/2.1'))
 #set ($escapedVersions = $services.rendering.escape($versionsParameter, 'xwiki/2.1'))
+## The excluded changes are handed to the search rather than taken out of what it returns, so that they are left out
+## before the limit applies: otherwise they would take the place of changes the section could display, and make it
+## report changes it left out when it left out nothing but them. They are escaped for the same reason as the product.
+#set ($escapedExclusions = $services.rendering.escape("$!wikimacro.parameters.exclusions", 'xwiki/2.1'))
 ## Decide whether or not display edit links for changes: only display them when the current user has edit rights on
 ## the current page
 #set ($displayEditLink = $hasEdit)
@@ -218,16 +216,14 @@
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-#removeExcludedChanges($userChanges)
-#removeExcludedChanges($userMiscChanges)
 #if ($userChanges.size() == 0)
   #if ($userMiscChanges.size() == 0)
     {{translation key="releasenotes.changes.user.nochanges"/}}
@@ -266,16 +262,14 @@
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-#removeExcludedChanges($adminChanges)
-#removeExcludedChanges($adminMiscChanges)
 #if ($adminChanges.size() == 0)
   #if ($adminMiscChanges.size() == 0)
     {{translation key="releasenotes.changes.admin.nochanges"/}}
@@ -314,16 +308,14 @@
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
+{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
 {{/velocity}}
 
 {{velocity}}
-#removeExcludedChanges($devChanges)
-#removeExcludedChanges($devMiscChanges)
 #if ($devChanges.size() == 0)
   #if ($devMiscChanges.size() == 0)
     {{translation key="releasenotes.changes.developer.nochanges"/}}

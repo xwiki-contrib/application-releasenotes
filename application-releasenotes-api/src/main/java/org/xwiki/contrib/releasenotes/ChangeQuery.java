@@ -20,8 +20,11 @@
 package org.xwiki.contrib.releasenotes;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.stability.Unstable;
 
 /**
@@ -61,6 +64,8 @@ public class ChangeQuery
     private List<ChangeFilter> importances = anyValue();
 
     private Boolean containsScreenshots;
+
+    private Set<DocumentReference> exclusions = new LinkedHashSet<>();
 
     private int limit = DEFAULT_LIMIT;
 
@@ -162,6 +167,26 @@ public class ChangeQuery
     public void setContainsScreenshots(Boolean containsScreenshots)
     {
         this.containsScreenshots = containsScreenshots;
+    }
+
+    /**
+     * @return the pages of the changes the search leaves out even when they match, which are left out before the page
+     *         of the result is cut, so that they neither take the place of a change that is returned nor make the
+     *         search report more changes than it returns
+     * @since 2.8
+     */
+    public Set<DocumentReference> getExclusions()
+    {
+        return this.exclusions;
+    }
+
+    /**
+     * @param exclusions the pages of the changes the search leaves out even when they match
+     * @since 2.8
+     */
+    public void setExclusions(Set<DocumentReference> exclusions)
+    {
+        this.exclusions = exclusions;
     }
 
     /**

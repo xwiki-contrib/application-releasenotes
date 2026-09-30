@@ -210,12 +210,13 @@ beside them, in the context variable named after ##contextVariable## suffixed wi
   'importance': $xcontext.macro.params.importance,
   'containsScreenshots': $xcontext.macro.params.containsScreenshots,
   'limit': $xcontext.macro.params.limit,
-  'offset': $xcontext.macro.params.offset
+  'offset': $xcontext.macro.params.offset,
+  'exclusions': $xcontext.macro.params.exclusions
 }))
 #set ($changeResult = $services.releasenotes.search($changeQuery))
 #set ($xvariable = $xcontext.macro.params.contextVariable)
-## The changes are published as the names of the pages they live in, and not as references, because a caller
-## takes its own exclusions out of that list and writes those as names.
+## The changes are published as the names of the pages they live in, and not as references, because callers
+## compare them to page names they write themselves.
 #setVariable("$xvariable", $changeResult.changeNames)
 ## Publish the existence of a next page alongside the changes, under a name derived from the same context
 ## variable, so that a caller can offer a way to reach it instead of silently dropping the rest.
@@ -840,6 +841,72 @@ beside them, in the context variable named after ##contextVariable## suffixed wi
     </property>
     <property>
       <name>offset</name>
+    </property>
+  </object>
+  <object>
+    <name>ReleaseNotes.Code.Change.GetChangesMacro</name>
+    <number>11</number>
+    <className>XWiki.WikiMacroParameterClass</className>
+    <guid>8b1f4b77-c136-4184-88b6-392d6e3fe210</guid>
+    <class>
+      <name>XWiki.WikiMacroParameterClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <defaultValue>
+        <disabled>0</disabled>
+        <name>defaultValue</name>
+        <number>4</number>
+        <prettyName>Parameter default value</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </defaultValue>
+      <description>
+        <disabled>0</disabled>
+        <name>description</name>
+        <number>2</number>
+        <prettyName>Parameter description</prettyName>
+        <rows>5</rows>
+        <size>40</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.TextAreaClass</classType>
+      </description>
+      <mandatory>
+        <disabled>0</disabled>
+        <displayFormType>select</displayFormType>
+        <displayType>yesno</displayType>
+        <name>mandatory</name>
+        <number>3</number>
+        <prettyName>Parameter mandatory</prettyName>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.BooleanClass</classType>
+      </mandatory>
+      <name>
+        <disabled>0</disabled>
+        <name>name</name>
+        <number>1</number>
+        <prettyName>Parameter name</prettyName>
+        <size>30</size>
+        <unmodifiable>0</unmodifiable>
+        <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
+      </name>
+    </class>
+    <property>
+      <defaultValue/>
+    </property>
+    <property>
+      <description>A comma separated list of the full names of the pages of the changes to leave out. They are left out before the limit and the offset apply, so they never take the place of a change that is collected.</description>
+    </property>
+    <property>
+      <mandatory>0</mandatory>
+    </property>
+    <property>
+      <name>exclusions</name>
     </property>
   </object>
   <object>
