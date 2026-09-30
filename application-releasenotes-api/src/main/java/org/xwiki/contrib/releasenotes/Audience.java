@@ -19,6 +19,8 @@
  */
 package org.xwiki.contrib.releasenotes;
 
+import java.util.Locale;
+
 import org.apache.commons.lang3.StringUtils;
 import org.xwiki.stability.Unstable;
 
@@ -45,7 +47,7 @@ public enum Audience
      */
     public String getStoredValue()
     {
-        return name().toLowerCase();
+        return name().toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -55,7 +57,7 @@ public enum Audience
     public static Audience fromStoredValue(String storedValue)
     {
         for (Audience audience : values()) {
-            if (audience.getStoredValue().equals(StringUtils.lowerCase(storedValue))) {
+            if (audience.getStoredValue().equals(StringUtils.lowerCase(storedValue, Locale.ROOT))) {
                 return audience;
             }
         }

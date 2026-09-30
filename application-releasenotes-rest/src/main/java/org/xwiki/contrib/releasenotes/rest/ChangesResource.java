@@ -57,6 +57,10 @@ public interface ChangesResource
      * {@code 8.3} and asks what {@code 8.3} holds is asking about {@code 8.3}, and the changes of the milestones and
      * of the release candidates its release note also displays would be a different answer. Pass
      * {@code aggregated=true} to get that other answer, which is what the release note itself shows.
+     * <p>
+     * The {@code audience}, {@code category} and {@code importance} filters are written as the ones of the
+     * {@code getChanges} wiki macro: a value is a pattern where {@code %} matches anything, unless it starts with one
+     * of the {@code =}, {@code >=}, {@code >}, {@code <=} and {@code <} operators (e.g. {@code importance=>=medium}).
      *
      * @param wikiName the wiki holding the release note
      * @param product the product the release note is about

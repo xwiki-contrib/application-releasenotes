@@ -21,10 +21,7 @@ package org.xwiki.contrib.releasenotes.rest.internal;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
-
-import jakarta.inject.Provider;
 
 import javax.inject.Named;
 import javax.ws.rs.WebApplicationException;
@@ -36,14 +33,21 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xwiki.contrib.releasenotes.Audience;
 import org.xwiki.contrib.releasenotes.Change;
+import org.xwiki.contrib.releasenotes.ChangeFilter;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
-import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.Importance;
+import org.xwiki.contrib.releasenotes.LoadedChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
+import org.xwiki.contrib.releasenotes.internal.DefaultChangeQueryParser;
+import org.xwiki.contrib.releasenotes.internal.ProductResolver;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ErrorRepresentation;
@@ -52,6 +56,7 @@ import org.xwiki.model.internal.reference.DefaultSymbolScheme;
 import org.xwiki.model.internal.reference.LocalStringEntityReferenceSerializer;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.DocumentReferenceResolver;
+import org.xwiki.security.authorization.AuthorizationManager;
 import org.xwiki.security.authorization.ContextualAuthorizationManager;
 import org.xwiki.security.authorization.Right;
 import org.xwiki.test.annotation.ComponentList;
@@ -59,9 +64,7 @@ import org.xwiki.test.junit5.mockito.ComponentTest;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
 import org.xwiki.test.junit5.mockito.MockComponent;
 
-import com.xpn.xwiki.XWiki;
-import com.xpn.xwiki.XWikiContext;
-import com.xpn.xwiki.XWikiException;
+import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -80,9 +83,10 @@ import static org.mockito.Mockito.when;
  * @version $Id$
  */
 @ComponentTest
-// Reading what a client posted and writing back what it reads is part of what the endpoint answers, so the factory
-// and the serializer it uses are the real ones.
-@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class })
+// Reading what a client posted and writing back what it reads is part of what the endpoint answers, so the factory,
+// the filter parser and the serializer it uses are the real ones.
+@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class,
+    ReleaseNotesEntryPoint.class, ProductResolver.class, DefaultChangeQueryParser.class })
 class DefaultChangesResourceTest
 {
     private static final String NO_RELEASE_NOTE_IN_URL =
@@ -108,7 +112,13 @@ class DefaultChangesResourceTest
     private ReleaseNoteManager releaseNoteManager;
 
     @MockComponent
-    private ChangeQueryParser changeQueryParser;
+    private AuthorizationManager authorAuthorization;
+
+    @MockComponent
+    private ReleaseNotesDocumentStore documentStore;
+
+    @MockComponent
+    private ReleaseNotesConfiguration configuration;
 
     @MockComponent
     private ModelContext modelContext;
@@ -120,12 +130,9 @@ class DefaultChangesResourceTest
     @Named("current")
     private DocumentReferenceResolver<String> documentReferenceResolver;
 
-    @MockComponent
-    private Provider<XWikiContext> xcontextProvider;
-
-    private XWiki wiki;
-
     private UriInfo uriInfo;
+
+    private XWikiDocument noteDocument;
 
     @BeforeEach
     void setUp() throws Exception
@@ -134,15 +141,12 @@ class DefaultChangesResourceTest
         this.uriInfo = mock(UriInfo.class);
         when(this.uriInfo.getBaseUri()).thenReturn(URI.create("http://localhost:8080/xwiki/rest"));
 
-        XWikiContext xcontext = mock(XWikiContext.class);
-        this.wiki = mock(XWiki.class);
-        when(xcontext.getWiki()).thenReturn(this.wiki);
-        when(this.xcontextProvider.get()).thenReturn(xcontext);
-        when(this.wiki.exists(RELEASE_NOTE, xcontext)).thenReturn(true);
+        this.noteDocument = mock(XWikiDocument.class);
+        when(this.documentStore.load(RELEASE_NOTE)).thenReturn(this.noteDocument);
 
         when(this.releaseNoteManager.getReleaseNoteReference(PRODUCT, VERSION)).thenReturn(RELEASE_NOTE);
-        when(this.changeQueryParser.parse(any())).thenReturn(new ChangeQuery());
-        when(this.changeManager.search(any(), any())).thenReturn(new ChangeSearchResult(List.of(), List.of(), false));
+        when(this.changeManager.searchAndLoad(any(), any())).thenReturn(
+            new LoadedChangeSearchResult(new ChangeSearchResult(List.of(), List.of(), false), List.of()));
     }
 
     /**
@@ -157,7 +161,7 @@ class DefaultChangesResourceTest
         this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, false, null, null);
 
         ArgumentCaptor<Predicate<DocumentReference>> filter = ArgumentCaptor.captor();
-        verify(this.changeManager).search(any(), filter.capture());
+        verify(this.changeManager).searchAndLoad(any(), filter.capture());
         assertTrue(filter.getValue().test(RELEASE_NOTE));
         assertFalse(filter.getValue().test(ENTRY));
     }
@@ -169,34 +173,55 @@ class DefaultChangesResourceTest
     @Test
     void theChangesOfOneReleaseNoteAreAskedForExactly() throws Exception
     {
-        when(this.changeManager.search(any(), any())).thenReturn(searchResult(true));
-        when(this.changeManager.getChange(ENTRY)).thenReturn(change());
+        when(this.changeManager.searchAndLoad(any(), any())).thenReturn(searchResult(true));
 
         ChangesRepresentation representation =
-            this.resource.getChanges("xwiki", PRODUCT, VERSION, "user", "Performance", "high", "true", false, "10",
+            this.resource.getChanges("xwiki", PRODUCT, VERSION, "User", "Performance", "high", "true", false, "10",
                 "20");
 
-        Map<String, ?> parameters = capturedParameters();
+        ChangeQuery query = capturedQuery();
 
-        assertEquals("=XWiki", parameters.get(ChangeQueryParser.PRODUCTS));
-        assertEquals("=8.3", parameters.get(ChangeQueryParser.VERSIONS));
-        assertEquals("user", parameters.get(ChangeQueryParser.AUDIENCE));
-        assertEquals("Performance", parameters.get(ChangeQueryParser.CATEGORIES));
-        assertEquals("high", parameters.get(ChangeQueryParser.IMPORTANCE));
-        assertEquals("true", parameters.get(ChangeQueryParser.CONTAINS_SCREENSHOTS));
-        assertEquals("10", parameters.get(ChangeQueryParser.LIMIT));
-        assertEquals("20", parameters.get(ChangeQueryParser.OFFSET));
+        assertEquals(List.of(exactly(PRODUCT)), query.getProducts());
+        assertEquals(List.of(exactly(VERSION)), query.getVersions());
+        // The filters a client passes are read as the ones of the getChanges wiki macro, where a value with no
+        // operator is a pattern.
+        assertEquals(List.of(like("user")), query.getAudiences());
+        assertEquals(List.of(like("Performance")), query.getCategories());
+        assertEquals(List.of(like("2")), query.getImportances());
+        assertEquals(Boolean.TRUE, query.getContainsScreenshots());
+        assertEquals(10, query.getLimit());
+        assertEquals(20, query.getOffset());
 
         assertEquals(1, representation.getChanges().size());
         assertEquals("The title", representation.getChanges().get(0).getTitle());
         assertEquals("ReleaseNotes.Data.XWiki.8\\.3.Entry001.WebHome",
             representation.getChanges().get(0).getReference());
         assertTrue(representation.isHasMore(), "The client is told that a next page of changes exists.");
+        // The changes come with the result of the search, which has checked the view right on them already.
+        verify(this.changeManager, never()).getChange(any());
+    }
+
+    /**
+     * The filters are written in the language of the getChanges wiki macro, which the REST page of the application
+     * documents: comma separated values, {@code %} wildcards and comparison operators.
+     */
+    @Test
+    void aFilterIsWrittenInTheLanguageOfTheGetChangesMacro() throws Exception
+    {
+        this.resource.getChanges("xwiki", PRODUCT, VERSION, "=User, dev%", "Perf%", ">=medium", null, false, null,
+            null);
+
+        ChangeQuery query = capturedQuery();
+
+        assertEquals(List.of(new ChangeFilter(ChangeFilter.Operator.EQUALS, "user"), like("dev%")),
+            query.getAudiences());
+        assertEquals(List.of(like("Perf%")), query.getCategories());
+        assertEquals(List.of(new ChangeFilter(ChangeFilter.Operator.GTE, "1")), query.getImportances());
     }
 
     /**
      * Asking for the aggregated changes of a final version is asking the question its release note answers: its own
-     * changes plus the ones of its milestones and of its release candidates.
+     * changes plus the ones of its milestones and of its release candidates, which are patterns.
      */
     @Test
     void theChangesOfTheMilestonesAreAskedForWhenTheyAreAskedFor() throws Exception
@@ -206,18 +231,45 @@ class DefaultChangesResourceTest
 
         this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, true, null, null);
 
-        assertEquals("8.3,8.3-milestone%,8.3-rc%", capturedParameters().get(ChangeQueryParser.VERSIONS));
+        assertEquals(List.of(like("8.3"), like("8.3-milestone%"), like("8.3-rc%")), capturedQuery().getVersions());
     }
 
+    /**
+     * A filter the client leaves out filters nothing, whereas a filter it leaves empty lists no value and keeps no
+     * change, as the getChanges wiki macro does.
+     */
     @Test
     void aFilterThatIsNotAskedForIsNotPassedOn() throws Exception
     {
-        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, null, null, null, false, null, null);
+        this.resource.getChanges("xwiki", PRODUCT, VERSION, null, "", null, null, false, null, "");
 
-        Map<String, ?> parameters = capturedParameters();
+        ChangeQuery query = capturedQuery();
+        ChangeQuery unfiltered = new ChangeQuery();
 
-        assertNull(parameters.get(ChangeQueryParser.AUDIENCE));
-        assertNull(parameters.get(ChangeQueryParser.LIMIT));
+        assertEquals(unfiltered.getAudiences(), query.getAudiences());
+        assertEquals(List.of(), query.getCategories());
+        assertEquals(unfiltered.getImportances(), query.getImportances());
+        assertNull(query.getContainsScreenshots());
+        assertEquals(ChangeQuery.DEFAULT_LIMIT, query.getLimit());
+        assertEquals(0, query.getOffset());
+    }
+
+    /**
+     * A filter value that names nothing that exists is a filter matching no change, and a paging value that is not
+     * usable gets the default one, as in the getChanges wiki macro: nothing is refused.
+     */
+    @Test
+    void anUnreadableFilterIsNotRefused() throws Exception
+    {
+        this.resource.getChanges("xwiki", PRODUCT, VERSION, "nobody", null, "huge", "maybe", false, "ten", "-3");
+
+        ChangeQuery query = capturedQuery();
+
+        assertEquals(List.of(like("nobody")), query.getAudiences());
+        assertEquals(List.of(like("huge")), query.getImportances());
+        assertNull(query.getContainsScreenshots());
+        assertEquals(ChangeQuery.DEFAULT_LIMIT, query.getLimit());
+        assertEquals(0, query.getOffset());
     }
 
     @Test
@@ -244,6 +296,10 @@ class DefaultChangesResourceTest
             () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted));
 
         assertEquals(RELEASE_NOTE, exception.getReference());
+        // The right is checked before what was posted is read: a user who may not add a change is told so, and not
+        // what is wrong with the change.
+        assertThrows(ReleaseNotesAccessDeniedException.class,
+            () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, new ChangeRepresentation()));
         verify(this.changeManager, never()).createChange(any());
     }
 
@@ -310,15 +366,21 @@ class DefaultChangesResourceTest
     @Test
     void aChangePostedToAReleaseNoteThatDoesNotExistIsRefused() throws Exception
     {
-        when(this.wiki.exists(any(DocumentReference.class), any(XWikiContext.class))).thenReturn(false);
+        when(this.noteDocument.isNew()).thenReturn(true);
 
         ChangeRepresentation posted = new ChangeRepresentation();
         posted.setTitle("The title");
 
-        Response response = this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, "9.0", posted);
+        Response response = this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted);
 
-        assertRefusal(response, Response.Status.NOT_FOUND, "There is no release note for the version [9.0] of "
-            + "[XWiki].");
+        assertRefusal(response, Response.Status.NOT_FOUND,
+            String.format("There is no release note for the version [%s] of [XWiki].", VERSION));
+        assertEquals("ReleaseNotes.Data.XWiki.8\\.3.WebHome",
+            ((ErrorRepresentation) response.getEntity()).getReference());
+        // The release note is looked for before the change is read, as it always was.
+        assertRefusal(this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, new ChangeRepresentation()),
+            Response.Status.NOT_FOUND, String.format("There is no release note for the version [%s] of [XWiki].",
+                VERSION));
         verify(this.changeManager, never()).createChange(any());
     }
 
@@ -341,9 +403,8 @@ class DefaultChangesResourceTest
     @Test
     void aStoreThatWillNotSayWhetherTheReleaseNoteExistsFails() throws Exception
     {
-        when(this.wiki.exists(any(DocumentReference.class), any(XWikiContext.class)))
-            .thenThrow(new XWikiException(XWikiException.MODULE_XWIKI_STORE,
-                XWikiException.ERROR_XWIKI_STORE_HIBERNATE_READING_DOC, "The store would not answer."));
+        when(this.documentStore.load(RELEASE_NOTE)).thenThrow(new ReleaseNotesException(
+            "Failed to load the page [xwiki:ReleaseNotes.Data.XWiki.8\\.3.WebHome]."));
 
         ChangeRepresentation posted = new ChangeRepresentation();
         posted.setTitle("The title");
@@ -351,8 +412,8 @@ class DefaultChangesResourceTest
         ReleaseNotesException exception = assertThrows(ReleaseNotesException.class,
             () -> this.resource.createChange(this.uriInfo, "xwiki", PRODUCT, VERSION, posted));
 
-        assertEquals("Failed to look up the page [xwiki:ReleaseNotes.Data.XWiki.8\\.3.WebHome].",
-            exception.getMessage());
+        assertFalse(exception instanceof ReleaseNotesNotFoundException, "A broken store is not an empty one.");
+        verify(this.changeManager, never()).createChange(any());
     }
 
     @Test
@@ -386,13 +447,22 @@ class DefaultChangesResourceTest
         verify(this.changeManager, never()).createChange(any());
     }
 
-    private Map<String, ?> capturedParameters()
+    private ChangeQuery capturedQuery() throws Exception
     {
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Map<String, ?>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(this.changeQueryParser).parse(captor.capture());
+        ArgumentCaptor<ChangeQuery> captor = ArgumentCaptor.forClass(ChangeQuery.class);
+        verify(this.changeManager).searchAndLoad(captor.capture(), any());
 
         return captor.getValue();
+    }
+
+    private static ChangeFilter exactly(String value)
+    {
+        return new ChangeFilter(ChangeFilter.Operator.EQUALS, value);
+    }
+
+    private static ChangeFilter like(String value)
+    {
+        return new ChangeFilter(ChangeFilter.Operator.LIKE, value);
     }
 
     private void assertRefusal(Response response, Response.Status status, String message)
@@ -403,10 +473,10 @@ class DefaultChangesResourceTest
         assertEquals(message, ((ErrorRepresentation) response.getEntity()).getMessage());
     }
 
-    private static ChangeSearchResult searchResult(boolean hasMore)
+    private static LoadedChangeSearchResult searchResult(boolean hasMore)
     {
-        return new ChangeSearchResult(List.of("ReleaseNotes.Data.XWiki.8\\.3.Entry001.WebHome"), List.of(ENTRY),
-            hasMore);
+        return new LoadedChangeSearchResult(new ChangeSearchResult(
+            List.of("ReleaseNotes.Data.XWiki.8\\.3.Entry001.WebHome"), List.of(ENTRY), hasMore), List.of(change()));
     }
 
     private static Change change()

@@ -5,7 +5,8 @@ org.xwiki.contrib.releasenotes.internal.DefaultReleaseNoteManager
 org.xwiki.contrib.releasenotes.internal.DefaultReleaseNotesConfiguration
 org.xwiki.contrib.releasenotes.internal.EntryPageAllocator
 org.xwiki.contrib.releasenotes.internal.ProductResolver
-org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentWriter
+org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore
+org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint
 org.xwiki.contrib.releasenotes.internal.converter.ChangeConverter
 org.xwiki.contrib.releasenotes.internal.converter.ReleaseNoteConverter
 org.xwiki.contrib.releasenotes.script.ReleaseNotesScriptService

@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
-import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -160,7 +159,7 @@ public class RepresentationFactory
         representation.setSummary(change.getSummary());
         representation.setDescription(change.getDescription());
         representation.setAudience(change.getAudience() == null ? null : change.getAudience().getStoredValue());
-        representation.setImportance(change.getImportance() == null ? null : toName(change.getImportance()));
+        representation.setImportance(change.getImportance() == null ? null : change.getImportance().getName());
         representation.setCategory(change.getCategory());
         representation.setScreenshots(change.getScreenshots());
         representation.setEntry(reference == null ? null : reference.getLastSpaceReference().getName());
@@ -240,31 +239,20 @@ public class RepresentationFactory
             return null;
         }
 
-        for (Importance candidate : Importance.values()) {
-            if (candidate.name().equalsIgnoreCase(importance)) {
-                return candidate;
-            }
-        }
+        Importance resolved = Importance.fromName(importance);
 
         // The numbers an importance is stored as are accepted too, so that a client reading a change out of the wiki
         // and posting it to another one does not have to translate them.
-        Importance resolved = Importance.fromStoredValue(importance);
+        if (resolved == null) {
+            resolved = Importance.fromStoredValue(importance);
+        }
 
         if (resolved == null) {
             throw new IllegalArgumentException(String.format("The importance [%s] is none of [%s].", importance,
-                names(Stream.of(Importance.values()).map(RepresentationFactory::toName))));
+                names(Stream.of(Importance.values()).map(Importance::getName))));
         }
 
         return resolved;
-    }
-
-    /**
-     * @return how an importance is written in a representation, which is the lower cased name of the value and not
-     *         the number it is stored as: a client says {@code high}, the database orders on {@code 2}
-     */
-    private static String toName(Importance importance)
-    {
-        return importance.name().toLowerCase(Locale.ROOT);
     }
 
     /**
