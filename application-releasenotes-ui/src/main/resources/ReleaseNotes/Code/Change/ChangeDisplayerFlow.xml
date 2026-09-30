@@ -51,38 +51,25 @@
   ## the gallery asks for; below that they stack, rather than shrink the screenshot to a thumbnail and the
   ## summary beside it to a ribbon a few words wide.
   (% class='col-md-6 rn-change-media' %)(((
-  #set ($changeDoc = $xwiki.getDocument($item))
-  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
+  #loadChangeView($item, $displayEditLink)
   ## Every change gets a media block, the same way the grid displayer does: the screenshots when the change has
   ## any, its video when it has none, and the "no image" placeholder when it has neither. A change left with an
   ## empty column would otherwise be read as illustrated by the screenshot of the change displayed below it.
   #displayScreenshots($changeObject, true, true)
   )))
   (% class="col-md-6 rn-change-text" %)(((
-  #generateDisplayEditLink($displayEditLink, $changeDoc)
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
-  ## The title of a change is optional, so a change is only given a section of its own when it has one: a heading
-  ## holding no text at all would leave an empty section in the release note, and an empty entry in the table of
-  ## contents the release note template displays. The edit link then follows the summary, the only thing that
-  ## displays such a change.
+  ## A change with no title is given no section of its own (see #loadChangeView).
   #if ($title != '')
   === $title${displayEditLinkMarkup}===
 
   #end
-  ## Display the summary through the change document, so that its rich text is rendered in the context of that
-  ## document rather than of this displayer, the way the change's own page renders it.
   ## The edit link of a change with no title reaches the summary line through a variable rather than through a
   ## directive closing that line: Velocity drops the newline ending a line that ends with a directive. The blank
   ## line that follows then keeps the link towards the change out of the paragraph the summary is rendered in.
-  #set ($summaryEditLinkMarkup = '')
-  #if ($title == '')
-    #set ($summaryEditLinkMarkup = $displayEditLinkMarkup)
-  #end
-  $changeDoc.display('summary', 'view', $changeObject)$summaryEditLinkMarkup
+  $changeSummary$summaryEditLinkMarkup
 
-  #set ($description = $changeObject.getValue('description'))
-  #if ("$!description" != '')
-    [[${moreDetailsLabel}&gt;&gt;doc:$changeDoc.documentReference]]
+  #if ($moreDetailsLinkMarkup != '')
+    $moreDetailsLinkMarkup
   #end
   )))
   )))

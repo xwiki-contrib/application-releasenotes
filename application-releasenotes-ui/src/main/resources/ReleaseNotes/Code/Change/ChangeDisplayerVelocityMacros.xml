@@ -54,6 +54,34 @@
 ## close the link and have the rest of its value parsed on its own.
 #set ($moreDetailsLabel = $services.rendering.escape(
   $services.localization.render('releasenotes.changes.display.moreDetails'), 'xwiki/2.1'))
+## Loads what the displayers show of one change, so that a displayer only decides where each part goes. Sets:
+## - $changeDoc, $changeObject: the change page and its ChangeClass object
+## - $title: the title, escaped since the displayers emit it as wiki syntax; empty when the change has none
+## - $displayEditLinkMarkup: the link towards the editor of the change, empty unless $displayEditLink is 'true'
+## - $summaryEditLinkMarkup: that same link when the change has no title, empty otherwise. A change with no title
+##   is given no heading, since a heading holding no text at all would leave an empty section in the release note
+##   and an empty entry in the table of contents the release note template displays; the edit link then follows
+##   the summary, the only thing that displays such a change.
+## - $changeSummary: the summary, displayed through the change document so that its rich text is rendered in the
+##   context of that document rather than of the displayer, the way the change's own page renders it. Not quiet:
+##   a page with no ChangeClass object keeps displaying the call itself, as the displayers always did
+## - $moreDetailsLinkMarkup: the link towards the change page when the change has a description that the summary
+##   alone doesn't carry, empty otherwise
+#macro(loadChangeView $changeItem $displayEditLink)
+  #set ($changeDoc = $xwiki.getDocument($changeItem))
+  #set ($changeObject = $changeDoc.getObject('ReleaseNotes.Code.Change.ChangeClass'))
+  #generateDisplayEditLink($displayEditLink, $changeDoc)
+  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
+  #set ($summaryEditLinkMarkup = '')
+  #if ($title == '')
+    #set ($summaryEditLinkMarkup = $displayEditLinkMarkup)
+  #end
+  #set ($changeSummary = "$changeDoc.display('summary', 'view', $changeObject)")
+  #set ($moreDetailsLinkMarkup = '')
+  #if ("$!changeObject.getValue('description')" != '')
+    #set ($moreDetailsLinkMarkup = "[[${moreDetailsLabel}&gt;&gt;doc:$changeDoc.documentReference]]")
+  #end
+#end
 #macro(displayScreenshots $changeObject $useGallery $alwaysDisplayScreenshots)
   #set ($mediaReferences = $changeObject.getValue('screenshots'))
   #if ("$!mediaReferences" == '' &amp;&amp; $alwaysDisplayScreenshots)
