@@ -30,6 +30,7 @@ import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.Importance;
+import org.xwiki.contrib.releasenotes.LoadedChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
@@ -464,6 +465,32 @@ class DefaultChangeManagerTest
         when(this.changeSearcher.search(query, filter)).thenReturn(result);
 
         assertSame(result, this.manager.search(query, filter));
+    }
+
+    /**
+     * A search asked to load its changes answers with the changes the pages it found hold, in the order it found
+     * them, on top of those pages.
+     */
+    @Test
+    void aSearchLoadsTheChangesItFound() throws Exception
+    {
+        DocumentReference first = this.manager.createChange(change());
+        Change other = change();
+        other.setTitle("Smaller download");
+        DocumentReference second = this.manager.createChange(other);
+
+        ChangeQuery query = new ChangeQuery();
+        Predicate<DocumentReference> filter = reference -> true;
+        when(this.changeSearcher.search(query, filter))
+            .thenReturn(new ChangeSearchResult(List.of("second", "first"), List.of(second, first), true));
+
+        LoadedChangeSearchResult result = this.manager.searchAndLoad(query, filter);
+
+        assertEquals(List.of(second, first), result.getChanges());
+        assertEquals(List.of("second", "first"), result.getChangeNames());
+        assertTrue(result.hasMore());
+        assertEquals(List.of("Smaller download", "Faster startup"),
+            result.getLoadedChanges().stream().map(Change::getTitle).toList());
     }
 
     private Change change()

@@ -187,13 +187,17 @@ class ReleaseNotesEntryPointTest
 
         this.entryPoint.getReleaseNotes("XWiki", REQUEST);
         this.entryPoint.search(new ChangeQuery(), REQUEST);
+        this.entryPoint.searchAndLoad(new ChangeQuery(), REQUEST);
 
         ArgumentCaptor<Predicate<DocumentReference>> noteFilter = ArgumentCaptor.captor();
         verify(this.releaseNoteManager).getReleaseNotes(eq("XWiki"), noteFilter.capture());
         ArgumentCaptor<Predicate<DocumentReference>> changeFilter = ArgumentCaptor.captor();
         verify(this.changeManager).search(any(), changeFilter.capture());
+        ArgumentCaptor<Predicate<DocumentReference>> loadedChangeFilter = ArgumentCaptor.captor();
+        verify(this.changeManager).searchAndLoad(any(), loadedChangeFilter.capture());
 
-        for (Predicate<DocumentReference> filter : List.of(noteFilter.getValue(), changeFilter.getValue())) {
+        for (Predicate<DocumentReference> filter : List.of(noteFilter.getValue(), changeFilter.getValue(),
+            loadedChangeFilter.getValue())) {
             assertTrue(filter.test(RELEASE_NOTE));
             assertFalse(filter.test(ENTRY));
         }
