@@ -31,11 +31,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.internal.ProductResolver;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.contrib.releasenotes.rest.model.ErrorRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ReleaseNoteRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ReleaseNotesRepresentation;
@@ -45,6 +49,7 @@ import org.xwiki.model.internal.reference.LocalStringEntityReferenceSerializer;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.DocumentReferenceResolver;
 import org.xwiki.model.reference.WikiReference;
+import org.xwiki.security.authorization.AuthorizationManager;
 import org.xwiki.security.authorization.ContextualAuthorizationManager;
 import org.xwiki.security.authorization.Right;
 import org.xwiki.test.annotation.ComponentList;
@@ -75,7 +80,8 @@ import static org.mockito.Mockito.when;
 @ComponentTest
 // Reading what a client posted and writing back what it reads is part of what the endpoint answers, so the factory
 // and the serializer it uses are the real ones.
-@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class })
+@ComponentList({ RepresentationFactory.class, LocalStringEntityReferenceSerializer.class, DefaultSymbolScheme.class,
+    ReleaseNotesEntryPoint.class, ProductResolver.class })
 class DefaultReleaseNotesResourceTest
 {
     private static final DocumentReference RELEASE_NOTE = new DocumentReference("xwiki",
@@ -89,6 +95,15 @@ class DefaultReleaseNotesResourceTest
 
     @MockComponent
     private ReleaseNotesConfiguration configuration;
+
+    @MockComponent
+    private AuthorizationManager authorAuthorization;
+
+    @MockComponent
+    private ReleaseNotesDocumentStore documentStore;
+
+    @MockComponent
+    private ChangeManager changeManager;
 
     @MockComponent
     private ModelContext modelContext;

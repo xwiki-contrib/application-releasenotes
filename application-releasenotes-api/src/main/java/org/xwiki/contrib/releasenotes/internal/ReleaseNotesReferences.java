@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.LocalDocumentReference;
+import org.xwiki.model.reference.SpaceReference;
 
 /**
  * The pages of the application the release notes and the changes are made of. The application only works installed
@@ -104,6 +105,12 @@ public final class ReleaseNotesReferences
     public static final LocalDocumentReference REQUIRED_RIGHT_CLASS =
         new LocalDocumentReference("XWiki", "RequiredRightClass");
 
+    /**
+     * The name of the page a release note, and each of its entries, lives in: the space is what names them, so that
+     * the entries of a release note are the pages under it.
+     */
+    private static final String HOME_PAGE = "WebHome";
+
     private ReleaseNotesReferences()
     {
         // Utility class, and thus no public constructor.
@@ -128,7 +135,22 @@ public final class ReleaseNotesReferences
         spaces.add(product);
         spaces.add(getShortVersion(version));
 
-        return new DocumentReference(wikiId, spaces, "WebHome");
+        return new DocumentReference(wikiId, spaces, HOME_PAGE);
+    }
+
+    /**
+     * Gives the page one entry of a release note lives in. The name is built into a reference rather than resolved
+     * from a serialized one, so a name carrying the characters a reference is written with names that page and
+     * nothing else.
+     *
+     * @param noteReference the page of the release note the entry belongs to
+     * @param entry the name of the entry, e.g. {@code Entry001}
+     * @return the page of that entry, whether it exists or not
+     * @since 2.8
+     */
+    public static DocumentReference entry(DocumentReference noteReference, String entry)
+    {
+        return new DocumentReference(HOME_PAGE, new SpaceReference(entry, noteReference.getLastSpaceReference()));
     }
 
     /**

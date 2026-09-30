@@ -24,7 +24,6 @@ import java.util.Map;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 
 import javax.ws.rs.WebApplicationException;
@@ -41,14 +40,12 @@ import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
 import org.xwiki.contrib.releasenotes.rest.ChangesResource;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.rest.XWikiRestComponent;
-
-import com.xpn.xwiki.XWikiContext;
-import com.xpn.xwiki.XWikiException;
 
 /**
  * Default implementation of {@link ChangesResource}.
@@ -74,9 +71,6 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
     @Inject
     private RepresentationFactory representationFactory;
 
-    @Inject
-    private Provider<XWikiContext> xcontextProvider;
-
     @Override
     public ChangesRepresentation getChanges(String wikiName, String product, String version, String audience,
         String category, String importance, String containsScreenshots, boolean aggregated, String limit,
@@ -100,13 +94,13 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
             parameters.put(ChangeQueryParser.VERSIONS, getVersions(product, version, aggregated));
 
             ChangeQuery query = this.changeQueryParser.parse(parameters);
-            ChangeSearchResult result = this.changeManager.search(query, this::canView);
+            ChangeSearchResult result = this.entryPoint.search(query, getCaller());
             ChangesRepresentation representation = new ChangesRepresentation();
             representation.setHasMore(result.hasMore());
 
             for (DocumentReference reference : result.getChanges()) {
                 representation.getChanges()
-                    .add(this.representationFactory.toRepresentation(this.changeManager.getChange(reference),
+                    .add(this.representationFactory.toRepresentation(this.entryPoint.getChange(reference, getCaller()),
                         reference));
             }
 
@@ -123,31 +117,28 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
                 return refuse(Response.Status.BAD_REQUEST, NO_RELEASE_NOTE_IN_URL);
             }
 
-            DocumentReference noteReference = this.releaseNoteManager.getReleaseNoteReference(product, version);
-            // The change is written to a new entry page of the release note, which is not known until it is taken,
-            // so the right checked is the right to edit the release note, as the pages of the application do before
-            // offering to add a change.
-            checkEditRight(noteReference);
-
-            if (!exists(noteReference)) {
-                return refuse(Response.Status.NOT_FOUND, String
-                    .format("There is no release note for the version [%s] of [%s].", version, product),
-                    noteReference);
-            }
-
-            if (change == null || StringUtils.isBlank(change.getTitle())) {
-                return refuse(Response.Status.BAD_REQUEST, "A change needs a title.");
-            }
-
-            Change created;
+            DocumentReference reference;
 
             try {
-                created = this.representationFactory.toChange(change, product, version);
-            } catch (IllegalArgumentException e) {
-                return refuse(Response.Status.BAD_REQUEST, e.getMessage());
-            }
+                // The change is read only once the current user is known to be allowed to add one to the release note
+                // of the URL and that release note is known to exist, so that a client that may not add a change is
+                // told so before it is told what is wrong with the change it sent.
+                reference = this.entryPoint.createChange(product, version, () -> toChange(change, product, version),
+                    getCaller());
+            } catch (WebApplicationException e) {
+                // What was posted is not a change that can be created.
+                return e.getResponse();
+            } catch (ReleaseNotesNotFoundException e) {
+                if (!this.releaseNoteManager.getReleaseNoteReference(product, version).equals(e.getReference())) {
+                    throw e;
+                }
 
-            DocumentReference reference = this.changeManager.createChange(created);
+                // The release note of the URL does not exist, which is answered as the other mistakes of the request
+                // are, in the representation the client asked for.
+                return refuse(Response.Status.NOT_FOUND, String
+                    .format("There is no release note for the version [%s] of [%s].", version, product),
+                    e.getReference());
+            }
 
             // The change is read back rather than echoed, because creation is template-driven: a property the client
             // left out holds the value the change template gives it, and not the null the request carried.
@@ -156,6 +147,27 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
                     reference))
                 .build();
         });
+    }
+
+    /**
+     * @param change the change the client sent
+     * @param product the product of the release note of the URL
+     * @param version the version of that release note, in its long form
+     * @return the change to create
+     * @throws WebApplicationException answering the client with a 400 when the change has no title, or holds a value
+     *             that cannot be read
+     */
+    private Change toChange(ChangeRepresentation change, String product, String version)
+    {
+        if (change == null || StringUtils.isBlank(change.getTitle())) {
+            throw new WebApplicationException(refuse(Response.Status.BAD_REQUEST, "A change needs a title."));
+        }
+
+        try {
+            return this.representationFactory.toChange(change, product, version);
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(refuse(Response.Status.BAD_REQUEST, e.getMessage()));
+        }
     }
 
     /**
@@ -186,21 +198,5 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
     private static String exactly(String value)
     {
         return ChangeFilter.Operator.EQUALS.getSyntax() + value;
-    }
-
-    /**
-     * @param reference the page of a release note
-     * @return whether that page exists
-     * @throws ReleaseNotesException when the store could not be asked
-     */
-    private boolean exists(DocumentReference reference) throws ReleaseNotesException
-    {
-        XWikiContext xcontext = this.xcontextProvider.get();
-
-        try {
-            return xcontext.getWiki().exists(reference, xcontext);
-        } catch (XWikiException e) {
-            throw new ReleaseNotesException(String.format("Failed to look up the page [%s].", reference), e);
-        }
     }
 }

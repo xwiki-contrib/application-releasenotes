@@ -64,9 +64,8 @@ public class DefaultReleaseNoteResource extends AbstractReleaseNotesResource
             }
 
             DocumentReference reference = this.releaseNoteManager.getReleaseNoteReference(product, version);
-            checkViewRight(reference);
 
-            return this.representationFactory.toRepresentation(this.releaseNoteManager.getReleaseNote(reference),
+            return this.representationFactory.toRepresentation(this.entryPoint.getReleaseNote(reference, getCaller()),
                 reference);
         });
     }
@@ -99,10 +98,9 @@ public class DefaultReleaseNoteResource extends AbstractReleaseNotesResource
             // the exception mapper, which is where every endpoint of the application turns a failure into a status
             // code.
             DocumentReference reference = this.releaseNoteManager.getReleaseNoteReference(product, version);
-            checkEditRight(reference);
 
             return Response.ok(this.representationFactory
-                .toRepresentation(this.releaseNoteManager.updateReleaseNote(replacement), reference)).build();
+                .toRepresentation(this.entryPoint.updateReleaseNote(replacement, getCaller()), reference)).build();
         });
     }
 }
