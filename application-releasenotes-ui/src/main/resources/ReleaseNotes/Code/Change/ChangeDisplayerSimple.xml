@@ -44,36 +44,23 @@
 ## - $changeItems
 ## - $displayEditLink
 #foreach ($item in $changeItems)
-  #set ($changeDoc = $xwiki.getDocument($item))
-  #set ($changeObject = $changeDoc.getObject("ReleaseNotes.Code.Change.ChangeClass"))
-  #generateDisplayEditLink($displayEditLink, $changeDoc)
-  #set ($title = $services.rendering.escape("$!changeObject.getValue('title')", 'xwiki/2.1'))
-  ## The title of a change is optional, so a change is only given a section of its own when it has one: a heading
-  ## holding no text at all would leave an empty section in the release note, and an empty entry in the table of
-  ## contents the release note template displays. The edit link then follows the summary, the only thing that
-  ## displays such a change.
+  #loadChangeView($item, $displayEditLink)
+  ## A change with no title is given no section of its own (see #loadChangeView).
   #if ($title != '')
   === $title${displayEditLinkMarkup}===
   #end
-  ## Display the summary through the change document, so that its rich text is rendered in the context of that
-  ## document rather than of this displayer, the way the change's own page renders it.
   ## The edit link of a change with no title reaches the summary line through a variable rather than through a
   ## directive closing that line: Velocity drops the newline ending a line that ends with a directive. The blank
   ## line that follows then closes the paragraph the summary is rendered in, which the screenshots below must not
   ## be part of: the gallery they are displayed in is a standalone macro and cannot be used inline.
-  #set ($summaryEditLinkMarkup = '')
-  #if ($title == '')
-    #set ($summaryEditLinkMarkup = $displayEditLinkMarkup)
-  #end
-  $changeDoc.display('summary', 'view', $changeObject)$summaryEditLinkMarkup
+  $changeSummary$summaryEditLinkMarkup
 
   #if ("$changeObject.getValue('screenshots')" != '')
     #displayScreenshots($changeObject, true, false)
 
   #end
-  #set ($description = $changeObject.getValue('description'))
-  #if ("$!description" != '')
-    [[${moreDetailsLabel}&gt;&gt;doc:$changeDoc.documentReference]]
+  #if ($moreDetailsLinkMarkup != '')
+    $moreDetailsLinkMarkup
   #end
 #end
 {{/velocity}}</content>
