@@ -72,6 +72,33 @@ public class ChangeQuery
     private int offset;
 
     /**
+     * A query matching every change, whose filters a caller restricts.
+     */
+    public ChangeQuery()
+    {
+        // Every property is unrestricted until the caller says otherwise.
+    }
+
+    /**
+     * A copy of the passed query, whose filters may be modified without modifying the ones of the passed query.
+     *
+     * @param query the query to copy
+     * @since 2.8
+     */
+    public ChangeQuery(ChangeQuery query)
+    {
+        this.products = new ArrayList<>(query.products);
+        this.versions = new ArrayList<>(query.versions);
+        this.audiences = new ArrayList<>(query.audiences);
+        this.categories = new ArrayList<>(query.categories);
+        this.importances = new ArrayList<>(query.importances);
+        this.containsScreenshots = query.containsScreenshots;
+        this.exclusions = new LinkedHashSet<>(query.exclusions);
+        this.limit = query.limit;
+        this.offset = query.offset;
+    }
+
+    /**
      * @return the filters on the product the changes are of
      */
     public List<ChangeFilter> getProducts()

@@ -26,12 +26,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xwiki.bridge.DocumentAccessBridge;
+import org.xwiki.contrib.releasenotes.Audience;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
+import org.xwiki.contrib.releasenotes.ReleaseNoteSection;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.internal.ReleaseNotesCaller;
 import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
@@ -177,5 +179,22 @@ class ReleaseNotesScriptServiceTest
 
         assertEquals("XWiki", this.service.getDefaultProduct());
         assertEquals(RELEASE_NOTE, this.service.getDefaultTemplate());
+    }
+
+    /**
+     * The sections a release note displays are the ones the API defines, one per audience, each keeping the query of
+     * the release note.
+     */
+    @Test
+    void theSectionsAreTheOnesOfTheApi()
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setLimit(20);
+
+        List<ReleaseNoteSection> sections = this.service.getSections(query);
+
+        assertEquals(List.of(Audience.USER, Audience.ADMINISTRATOR, Audience.DEVELOPER),
+            sections.stream().map(ReleaseNoteSection::getAudience).toList());
+        assertEquals(20, sections.get(0).getMainChanges().getLimit());
     }
 }

@@ -156,8 +156,6 @@
       <code>{{include reference="ReleaseNotes.Code.EntryVelocityMacros"/}}
 
 {{velocity output="false"}}
-#set ($changesLimit = "$!wikimacro.parameters.limit")
-
 ## Each section is a page of changes, so it can leave changes out. Say so rather than let a release note look
 ## complete while it is not: this is the only sign an author gets that the limit needs raising.
 #macro (displayTruncationWarning $hasMore $miscHasMore)
@@ -167,6 +165,15 @@
 )))
   #end
 #end
+
+## What the sections of a release note are, and how their changes are split, comes from the Java API. What is left
+## here is how each of them is named: in the translation keys, in the action its "Add … Change" form posts, and in the
+## variables its changes are published under, which are the names the getChanges calls of this macro used.
+#set ($sectionNames = {
+  'user': {'key': 'user', 'action': 'useradd', 'variable': 'user'},
+  'administrator': {'key': 'admin', 'action': 'adminadd', 'variable': 'admin'},
+  'developer': {'key': 'developer', 'action': 'devadd', 'variable': 'dev'}
+})
 {{/velocity}}
 
 {{velocity}}
@@ -178,160 +185,69 @@
 #set ($product = $!doc.getValue('product'))
 #set ($version = $!doc.getValue('version'))
 #set ($released = $!doc.getValue('released'))
-## The product and the versions are placed into the getChanges calls below as macro parameter values, which are
-## re-parsed as wiki syntax, so both must be emitted escaped: left raw, a value carrying a double quote would
-## close the parameter and the rest of the value would be parsed as wiki syntax of its own. The versions are
-## escaped only once the milestone/RC/final parsing above has built them, since that parsing works on the raw
-## page name.
-#set ($escapedProduct = $services.rendering.escape("$!product", 'xwiki/2.1'))
-#set ($escapedVersions = $services.rendering.escape($versionsParameter, 'xwiki/2.1'))
-## The excluded changes are handed to the search rather than taken out of what it returns, so that they are left out
-## before the limit applies: otherwise they would take the place of changes the section could display, and make it
-## report changes it left out when it left out nothing but them. They are escaped for the same reason as the product.
-#set ($escapedExclusions = $services.rendering.escape("$!wikimacro.parameters.exclusions", 'xwiki/2.1'))
+## Handle the add-change actions and show their buttons only when the current user can edit the note and the note is
+## not released. The button being hidden otherwise is not by itself what keeps the action from running.
+#set ($canAddChanges = $hasEdit &amp;&amp; $released != '1')
+## The changes of the product of the note and of the versions it gathers, but the excluded ones, which are left out
+## by the search itself so that they do not count against the limit of a section. The filters are read the way the
+## getChanges macro reads its parameters, since this is what they are.
+#set ($changesQuery = $services.releasenotes.parseQuery({
+  'products': "$!product",
+  'versions': $versionsParameter,
+  'exclusions': "$!wikimacro.parameters.exclusions",
+  'limit': "$!wikimacro.parameters.limit"
+}))
 ## Decide whether or not display edit links for changes: only display them when the current user has edit rights on
 ## the current page
 #set ($displayEditLink = $hasEdit)
-== {{translation key="releasenotes.changes.user.heading"/}} ==
-## Handle the action only under the same condition that shows its button: the current user can edit the note and
-## the note is not released. The button being hidden otherwise is not by itself what keeps the action from running.
-#if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'useradd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
-  #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
-#end
-#if ($hasEdit &amp;&amp; $released != '1')
+#foreach ($section in $services.releasenotes.getSections($changesQuery))
+  #set ($sectionName = $sectionNames.get($section.audience.storedValue))
+  #set ($sectionChanges = $services.releasenotes.search($section.mainChanges))
+  #set ($sectionMiscChanges = $services.releasenotes.search($section.miscellaneousChanges))
+  ## The changes are displayed by the displayChanges macro, which runs once this whole script has, so each section
+  ## publishes them under names of its own.
+  #set ($changesVariable = "${sectionName.variable}Changes")
+  #set ($miscChangesVariable = "${sectionName.variable}MiscChanges")
+  #setVariable("$changesVariable", $sectionChanges.changeNames)
+  #setVariable("$miscChangesVariable", $sectionMiscChanges.changeNames)
+== {{translation key="releasenotes.changes.${sectionName.key}.heading"/}} ==
+  #if ($canAddChanges &amp;&amp; "$!request.action" == $sectionName.action &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
+    #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
+  #end
+  #if ($canAddChanges)
 {{html clean='false'}}
 &lt;form&gt;
-  &lt;input type="hidden" name="action" value="useradd"/&gt;
+  &lt;input type="hidden" name="action" value="$sectionName.action"/&gt;
   &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
   &lt;input type="hidden" name="template" value="ReleaseNotes.Code.Change.ChangeTemplate"/&gt;
   &lt;input type="hidden" name="product" value="$!escapetool.xml($product)"/&gt;
   &lt;input type="hidden" name="version" value="$!escapetool.xml($version)"/&gt;
-  &lt;input type="hidden" name="audience" value="user"/&gt;
+  &lt;input type="hidden" name="audience" value="$section.audience.storedValue"/&gt;
   &lt;span class="buttonwrapper"&gt;
-    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.changes.user.submit'))"/&gt;
+    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render("releasenotes.changes.${sectionName.key}.submit"))"/&gt;
   &lt;/span&gt;
 &lt;/form&gt;
 {{/html}}
-#end
-{{/velocity}}
+  #end
 
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="user" containsScreenshots="true" contextVariable="userChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="user" containsScreenshots="false" contextVariable="userMiscChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-#if ($userChanges.size() == 0)
-  #if ($userMiscChanges.size() == 0)
-    {{translation key="releasenotes.changes.user.nochanges"/}}
+  #if ($sectionChanges.changeNames.size() == 0)
+    #if ($sectionMiscChanges.changeNames.size() == 0)
+    {{translation key="releasenotes.changes.${sectionName.key}.nochanges"/}}
+    #else
+    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="$miscChangesVariable"/}}
+    #end
   #else
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="userMiscChanges"/}}
+  {{displayChanges displayer="simple" displayEditLink="$displayEditLink" contextVariable="$changesVariable"/}}
+
+    #if ($sectionMiscChanges.changeNames.size() &gt; 0)
+    === {{translation key="releasenotes.changes.${sectionName.key}.miscellaneous"/}} ===
+
+    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="$miscChangesVariable"/}}
+    #end
   #end
-#else
-  {{displayChanges displayer="simple" displayEditLink="$displayEditLink" contextVariable="userChanges"/}}
-
-  #if ($userMiscChanges.size() &gt; 0)
-    === {{translation key="releasenotes.changes.user.miscellaneous"/}} ===
-
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="userMiscChanges"/}}
-  #end
+  #displayTruncationWarning($sectionChanges.hasMore(), $sectionMiscChanges.hasMore())
 #end
-#displayTruncationWarning($userChangesHasMore, $userMiscChangesHasMore)
-== {{translation key="releasenotes.changes.admin.heading"/}} ==
-#if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'adminadd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
-  #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
-#end
-#if ($hasEdit &amp;&amp; $released != '1')
-{{html clean='false'}}
-&lt;form&gt;
-  &lt;input type="hidden" name="action" value="adminadd"/&gt;
-  &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
-  &lt;input type="hidden" name="template" value="ReleaseNotes.Code.Change.ChangeTemplate"/&gt;
-  &lt;input type="hidden" name="product" value="$!escapetool.xml($product)"/&gt;
-  &lt;input type="hidden" name="version" value="$!escapetool.xml($version)"/&gt;
-  &lt;input type="hidden" name="audience" value="administrator"/&gt;
-  &lt;span class="buttonwrapper"&gt;
-    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.changes.admin.submit'))"/&gt;
-  &lt;/span&gt;
-&lt;/form&gt;
-{{/html}}
-#end
-{{/velocity}}
-
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="administrator" containsScreenshots="true" contextVariable="adminChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="administrator" containsScreenshots="false" contextVariable="adminMiscChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-#if ($adminChanges.size() == 0)
-  #if ($adminMiscChanges.size() == 0)
-    {{translation key="releasenotes.changes.admin.nochanges"/}}
-  #else
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="adminMiscChanges"/}}
-  #end
-#else
-  {{displayChanges displayer="simple" displayEditLink="$displayEditLink" contextVariable="adminChanges"/}}
-
-  #if ($adminMiscChanges.size() &gt; 0)
-    === {{translation key="releasenotes.changes.admin.miscellaneous"/}} ===
-
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="adminMiscChanges"/}}
-  #end
-#end
-#displayTruncationWarning($adminChangesHasMore, $adminMiscChangesHasMore)
-== {{translation key="releasenotes.changes.developer.heading"/}} ==
-#if ($hasEdit &amp;&amp; $released != '1' &amp;&amp; "$!request.action" == 'devadd' &amp;&amp; $services.csrf.isTokenValid($request.getParameter('form_token')))
-  #handleAddAction($product, $version, "${request.queryString}&amp;xredirect=$doc.getURL('view')")
-#end
-#if ($hasEdit &amp;&amp; $released != '1')
-{{html clean='false'}}
-&lt;form&gt;
-  &lt;input type="hidden" name="action" value="devadd"/&gt;
-  &lt;input type="hidden" name="form_token" value="$!escapetool.xml($services.csrf.token)"/&gt;
-  &lt;input type="hidden" name="template" value="ReleaseNotes.Code.Change.ChangeTemplate"/&gt;
-  &lt;input type="hidden" name="product" value="$!escapetool.xml($product)"/&gt;
-  &lt;input type="hidden" name="version" value="$!escapetool.xml($version)"/&gt;
-  &lt;input type="hidden" name="audience" value="developer"/&gt;
-  &lt;span class="buttonwrapper"&gt;
-    &lt;input class="button" type="submit" value="$escapetool.xml($services.localization.render('releasenotes.changes.developer.submit'))"/&gt;
-  &lt;/span&gt;
-&lt;/form&gt;
-{{/html}}
-#end
-{{/velocity}}
-
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="developer" importance="Medium,High" contextVariable="devChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-{{getChanges limit="$changesLimit" products="$escapedProduct" versions="$escapedVersions" exclusions="$escapedExclusions" audience="developer" importance="Low" contextVariable="devMiscChanges"/}}
-{{/velocity}}
-
-{{velocity}}
-#if ($devChanges.size() == 0)
-  #if ($devMiscChanges.size() == 0)
-    {{translation key="releasenotes.changes.developer.nochanges"/}}
-  #else
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="devMiscChanges"/}}
-  #end
-#else
-  {{displayChanges displayer="simple" displayEditLink="$displayEditLink" contextVariable="devChanges"/}}
-
-  #if ($devMiscChanges.size() &gt; 0)
-    === {{translation key="releasenotes.changes.developer.miscellaneous"/}} ===
-
-    {{displayChanges displayer="list" displayEditLink="$displayEditLink" contextVariable="devMiscChanges"/}}
-  #end
-#end
-#displayTruncationWarning($devChangesHasMore, $devMiscChangesHasMore)</code>
+{{/velocity}}</code>
     </property>
     <property>
       <contentDescription/>

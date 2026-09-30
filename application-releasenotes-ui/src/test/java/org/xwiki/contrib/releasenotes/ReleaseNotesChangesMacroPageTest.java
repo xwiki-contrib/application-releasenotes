@@ -162,9 +162,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
             return this.query;
         });
 
-        // A PageTest does not register $services.rendering, which the macro escapes the values it places into the
-        // getChanges calls with. The stand-in escapes the way the platform does, so that what the parser gets back
-        // is what these tests assert on.
+        // A PageTest does not register $services.rendering, which the pages the release note is rendered with escape
+        // values with. The stand-in escapes the way the platform does.
         this.componentManager.registerComponent(ScriptService.class, "rendering",
             new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
 
@@ -321,10 +320,9 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The product is plain text stored in the release note xobject, but the macro places it into the parameters of
-     * the getChanges calls it builds, which are re-parsed as wiki syntax, so it must be emitted escaped: left raw,
-     * a product carrying a double quote would close the parameter and the rest of it would be parsed as wiki
-     * syntax of its own, macros included.
+     * The product is plain text stored in the release note xobject, so it must reach the search as the one filter it
+     * is, and never be parsed as wiki syntax: a product carrying a double quote must not close a macro parameter and
+     * have the rest of it rendered as wiki syntax of its own, macros included.
      */
     @Test
     void productIsEscapedBeforeItIsRenderedAsWikiSyntax() throws Exception
@@ -335,7 +333,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote("8.3", "8.3", product, 100);
 
         assertTrue(html.select("b").isEmpty(),
-            "The product must not close the getChanges call and have the rest of it rendered as wiki syntax: "
+            "The product must not close a macro call and have the rest of it rendered as wiki syntax: "
                 + html.body().html());
         assertEquals(2 * AUDIENCE_COUNT, this.statements.size(), "Expected two queries per audience section.");
         for (int index = 0; index < this.statements.size(); index++) {
@@ -345,9 +343,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The version comes from the name of the space holding the release note, and the macro places the versions it
-     * derives from it into the parameters of the getChanges calls, so those too must be emitted escaped: left raw,
-     * a space name carrying a double quote would close the parameter and the rest of it would be parsed as wiki
+     * The version comes from the name of the space holding the release note, which is not wiki syntax either: a
+     * space name carrying a double quote must not close a macro parameter and have the rest of it rendered as wiki
      * syntax of its own, macros included.
      */
     @Test
@@ -361,7 +358,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote(shortVersion, "8.3", PRODUCT, 100);
 
         assertTrue(html.select("b").isEmpty(),
-            "The space name must not close the getChanges call and have the rest of it rendered as wiki syntax: "
+            "The space name must not close a macro call and have the rest of it rendered as wiki syntax: "
                 + html.body().html());
         assertEquals(2 * AUDIENCE_COUNT, this.statements.size(), "Expected two queries per audience section.");
         for (int index = 0; index < this.statements.size(); index++) {

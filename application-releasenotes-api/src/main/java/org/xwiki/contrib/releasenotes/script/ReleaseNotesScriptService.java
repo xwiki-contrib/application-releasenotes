@@ -35,6 +35,7 @@ import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
+import org.xwiki.contrib.releasenotes.ReleaseNoteSection;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
@@ -240,6 +241,25 @@ public class ReleaseNotesScriptService implements ScriptService
     public ChangeSearchResult search(ChangeQuery query) throws ReleaseNotesException
     {
         return this.entryPoint.search(query, getCaller());
+    }
+
+    /**
+     * Splits the changes a release note displays into its sections, each of which is searched on its own. For
+     * instance:
+     * <pre>{@code
+     * #foreach ($section in $services.releasenotes.getSections($query))
+     *   #set ($mainChanges = $services.releasenotes.search($section.mainChanges))
+     * #end
+     * }</pre>
+     *
+     * @param query the changes the release note displays, and how many of them each part of a section displays
+     * @return the sections of the release note, in the order it displays them
+     * @since 2.8
+     * @see ReleaseNoteSection#of(ChangeQuery)
+     */
+    public List<ReleaseNoteSection> getSections(ChangeQuery query)
+    {
+        return ReleaseNoteSection.of(query);
     }
 
     /**
