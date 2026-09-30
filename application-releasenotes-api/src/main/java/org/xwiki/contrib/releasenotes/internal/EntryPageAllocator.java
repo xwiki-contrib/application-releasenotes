@@ -28,7 +28,6 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.xwiki.component.annotation.Component;
-import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.DocumentReferenceResolver;
@@ -39,7 +38,6 @@ import org.xwiki.query.QueryException;
 import org.xwiki.query.QueryManager;
 
 import com.xpn.xwiki.XWikiContext;
-import com.xpn.xwiki.XWikiException;
 import com.xpn.xwiki.doc.XWikiDocument;
 
 /**
@@ -71,7 +69,7 @@ public class EntryPageAllocator
     private static final int CANDIDATE_COUNT = 10;
 
     @Inject
-    private ReleaseNoteManager releaseNoteManager;
+    private ReleaseNotesDocumentStore documentStore;
 
     @Inject
     private QueryManager queryManager;
@@ -97,14 +95,14 @@ public class EntryPageAllocator
     public XWikiDocument takeNextEntryPage(String product, String version, XWikiContext xcontext)
         throws ReleaseNotesException
     {
-        DocumentReference noteReference = this.releaseNoteManager.getReleaseNoteReference(product, version);
+        DocumentReference noteReference = ReleaseNotesReferences.releaseNote(xcontext.getWikiId(), product, version);
         SpaceReference versionSpace = noteReference.getLastSpaceReference();
         int highestNumber = getHighestEntryNumber(versionSpace);
 
         for (int number = highestNumber + 1; number <= highestNumber + CANDIDATE_COUNT; number++) {
             DocumentReference candidate = new DocumentReference("WebHome",
                 new SpaceReference(String.format(ENTRY_NAME_FORMAT, number), versionSpace));
-            XWikiDocument document = loadDocument(candidate, xcontext);
+            XWikiDocument document = this.documentStore.load(candidate);
 
             if (document.isNew()) {
                 return document;
@@ -151,16 +149,5 @@ public class EntryPageAllocator
         }
 
         return highestNumber;
-    }
-
-
-    private XWikiDocument loadDocument(DocumentReference reference, XWikiContext xcontext)
-        throws ReleaseNotesException
-    {
-        try {
-            return xcontext.getWiki().getDocument(reference, xcontext);
-        } catch (XWikiException e) {
-            throw new ReleaseNotesException(String.format("Failed to load the page [%s].", reference), e);
-        }
     }
 }

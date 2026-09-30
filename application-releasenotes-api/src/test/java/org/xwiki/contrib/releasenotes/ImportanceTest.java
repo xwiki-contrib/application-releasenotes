@@ -61,4 +61,39 @@ class ImportanceTest
         assertNull(Importance.fromStoredValue(null));
         assertNull(Importance.fromStoredValue("high"));
     }
+
+    /**
+     * An importance is written by its lower cased name wherever a person or a client writes one: a filter of a
+     * report, or a change posted over REST.
+     */
+    @Test
+    void everyImportanceIsNamedInLowerCase()
+    {
+        assertEquals("low", Importance.LOW.getName());
+        assertEquals("medium", Importance.MEDIUM.getName());
+        assertEquals("high", Importance.HIGH.getName());
+    }
+
+    @Test
+    void anImportanceIsFoundByItsNameWhateverItsCase()
+    {
+        for (Importance importance : Importance.values()) {
+            assertEquals(importance, Importance.fromName(importance.getName()));
+        }
+
+        assertEquals(Importance.HIGH, Importance.fromName("HIGH"));
+        assertEquals(Importance.MEDIUM, Importance.fromName("Medium"));
+    }
+
+    /**
+     * The number an importance is stored as is not its name, so that a caller can tell the two apart and accept both.
+     */
+    @Test
+    void aValueThatIsNoImportanceNameIsFoundAsNone()
+    {
+        assertNull(Importance.fromName("2"));
+        assertNull(Importance.fromName(""));
+        assertNull(Importance.fromName(null));
+        assertNull(Importance.fromName("highest"));
+    }
 }

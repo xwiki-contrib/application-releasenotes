@@ -40,13 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
- * Unit tests for {@link ReleaseNotesDocumentWriter}.
+ * Unit tests for {@link ReleaseNotesDocumentStore}.
  *
  * @version $Id$
  */
 @OldcoreTest
 @ReferenceComponentList
-class ReleaseNotesDocumentWriterTest
+class ReleaseNotesDocumentStoreTest
 {
     private static final DocumentReference RELEASE_NOTE = new DocumentReference("xwiki",
         List.of("ReleaseNotes", "Data", "XWiki", "8.3"), "WebHome");
@@ -54,7 +54,7 @@ class ReleaseNotesDocumentWriterTest
     private static final DocumentReference USER = new DocumentReference("xwiki", "XWiki", "User");
 
     @InjectMockComponents
-    private ReleaseNotesDocumentWriter writer;
+    private ReleaseNotesDocumentStore store;
 
     @InjectMockitoOldcore
     private MockitoOldcore oldcore;
@@ -72,7 +72,7 @@ class ReleaseNotesDocumentWriterTest
     @Test
     void savingAPageRecordsTheCurrentUserAsItsAuthorAndAsItsContentAuthor() throws Exception
     {
-        this.writer.save(page(), "New Release note");
+        this.store.save(page(), "New Release note");
 
         XWikiDocument saved = load();
         assertFalse(saved.isNew(), "Expected the page to have been saved.");
