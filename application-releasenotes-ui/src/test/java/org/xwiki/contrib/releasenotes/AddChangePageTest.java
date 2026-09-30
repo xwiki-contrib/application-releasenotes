@@ -30,6 +30,7 @@ import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.EntityReferenceSerializer;
 import org.xwiki.query.Query;
 import org.xwiki.query.QueryManager;
+import org.xwiki.rendering.internal.macro.message.ErrorMessageMacro;
 import org.xwiki.rendering.syntax.Syntax;
 import org.xwiki.security.authorization.Right;
 import org.xwiki.test.annotation.ComponentList;
@@ -43,6 +44,7 @@ import com.xpn.xwiki.web.XWikiServletResponseStub;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -57,10 +59,13 @@ import static org.mockito.Mockito.when;
  */
 @HTML50ComponentList
 @XWikiSyntax21ComponentList
-// The macro displays its error messages with the translation macro, and takes the page of a new entry through the
-// application's Java API.
+// The macro displays its error messages with the error and translation macros, and takes the page of a new entry
+// through the application's Java API.
 @ReleaseNotesApiComponentList
-@ComponentList(TranslationMacro.class)
+@ComponentList({
+    ErrorMessageMacro.class,
+    TranslationMacro.class
+})
 class AddChangePageTest extends PageTest
 {
     private static final DocumentReference ENTRY_VELOCITY_MACROS =
@@ -111,6 +116,9 @@ class AddChangePageTest extends PageTest
         });
 
         loadPage(ENTRY_VELOCITY_MACROS);
+
+        // A change is only added to a release note that exists.
+        this.xwiki.saveDocument(releaseNotePage(), this.context);
     }
 
     /**
@@ -164,9 +172,29 @@ class AddChangePageTest extends PageTest
     }
 
     /**
-     * Renders a {@code handleAddAction} call, which is what the "Add Change" buttons of the application do.
+     * The form of the home page lets its author type any version, and a change added to a release note that does not
+     * exist would be listed nowhere. No page is taken and the author is told why, rather than shown the generic
+     * failure or an error trace.
      */
-    private void addChange() throws Exception
+    @Test
+    void noChangeIsAddedToAReleaseNoteThatDoesNotExist() throws Exception
+    {
+        this.xwiki.deleteDocument(releaseNotePage(), this.context);
+
+        String result = addChange();
+
+        assertTrue(entryPage("Entry001").isNew(), "Expected no page to be taken for the new change.");
+        assertNull(this.redirect, "Expected the author to stay on the page of the form.");
+        assertTrue(result.contains("releasenotes.entry.releaseNoteNotFound"), result);
+        assertFalse(result.contains("releasenotes.entry.addFailed"), result);
+    }
+
+    /**
+     * Renders a {@code handleAddAction} call, which is what the "Add Change" buttons of the application do.
+     *
+     * @return the rendered page, where the macro reports what it could not do
+     */
+    private String addChange() throws Exception
     {
         XWikiDocument testPage = this.xwiki.getDocument(TEST_PAGE, this.context);
         testPage.setSyntax(Syntax.XWIKI_2_1);
@@ -176,7 +204,7 @@ class AddChangePageTest extends PageTest
             + "{{/velocity}}");
         this.xwiki.saveDocument(testPage, this.context);
         this.context.setDoc(testPage);
-        testPage.getRenderedContent(this.context);
+        return testPage.getRenderedContent(this.context);
     }
 
     /**
@@ -192,6 +220,11 @@ class AddChangePageTest extends PageTest
             references.add(serialize(entryPage.getDocumentReference()));
         }
         when(this.query.execute()).thenReturn(references);
+    }
+
+    private XWikiDocument releaseNotePage() throws Exception
+    {
+        return this.xwiki.getDocument(new DocumentReference("xwiki", VERSION_SPACES, "WebHome"), this.context);
     }
 
     private XWikiDocument entryPage(String name) throws Exception

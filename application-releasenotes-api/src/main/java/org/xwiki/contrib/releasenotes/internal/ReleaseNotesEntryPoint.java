@@ -217,6 +217,7 @@ public class ReleaseNotesEntryPoint
      * @param caller who the page is taken for
      * @return the page that was taken, or {@code null} when no page name was free
      * @throws ReleaseNotesAccessDeniedException when the caller may not edit the page of the release note
+     * @throws ReleaseNotesNotFoundException when there is no release note for that version
      * @throws ReleaseNotesException when the page could not be taken, e.g. because no product was given while the
      *             wiki has no default one
      * @see ChangeManager#reserveNextEntry(String, String)
@@ -224,7 +225,12 @@ public class ReleaseNotesEntryPoint
     public DocumentReference reserveNextEntry(String product, String version, ReleaseNotesCaller caller)
         throws ReleaseNotesException
     {
-        checkEditRight(product, version, caller);
+        DocumentReference noteReference = getReleaseNoteReference(product, version);
+
+        if (noteReference != null) {
+            checkEditRight(noteReference, caller);
+            checkReleaseNoteExists(noteReference, product, version);
+        }
 
         return this.changeManager.reserveNextEntry(product, version);
     }
@@ -298,7 +304,7 @@ public class ReleaseNotesEntryPoint
      * @param product the product of that release note, as it was asked for
      * @param version the version of that release note, as it was asked for
      * @throws ReleaseNotesNotFoundException when that page does not exist: the manager would otherwise write the
-     *             change under a release note that does not exist, where nothing lists it
+     *             change, or take its page, under a release note that does not exist, where nothing lists it
      * @throws ReleaseNotesException when that page could not be loaded
      */
     private void checkReleaseNoteExists(DocumentReference noteReference, String product, String version)
