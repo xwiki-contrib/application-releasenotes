@@ -31,6 +31,7 @@ import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
+import org.xwiki.contrib.releasenotes.LoadedChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
@@ -254,6 +255,22 @@ public class ReleaseNotesEntryPoint
     public ChangeSearchResult search(ChangeQuery query, ReleaseNotesCaller caller) throws ReleaseNotesException
     {
         return this.changeManager.search(query, this::canView);
+    }
+
+    /**
+     * @param query the changes to look for
+     * @param caller who the changes are looked for
+     * @return the page of the matching changes the current user may view that the query asks for, the changes
+     *         themselves, and whether more of them matched
+     * @throws ReleaseNotesException when the changes could not be looked up or read
+     * @see ChangeManager#searchAndLoad(ChangeQuery, java.util.function.Predicate)
+     */
+    public LoadedChangeSearchResult searchAndLoad(ChangeQuery query, ReleaseNotesCaller caller)
+        throws ReleaseNotesException
+    {
+        // The view right is checked once, by the filter of the search, which is what leaves a change the user may not
+        // view out of the page before it is cut: the changes read afterwards are the ones it accepted.
+        return this.changeManager.searchAndLoad(query, this::canView);
     }
 
     /**

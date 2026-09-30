@@ -19,6 +19,8 @@
  */
 package org.xwiki.contrib.releasenotes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.xwiki.component.annotation.Role;
@@ -135,4 +137,29 @@ public interface ChangeManager
      * @since 2.8
      */
     ChangeSearchResult search(ChangeQuery query, Predicate<DocumentReference> filter) throws ReleaseNotesException;
+
+    /**
+     * Looks for the changes matching a query that the passed filter also accepts, one page of them at a time, as
+     * {@link #search(ChangeQuery, Predicate)} does, and reads the changes of that page too, for a caller that answers
+     * with what the changes say rather than with where they live.
+     *
+     * @param query the changes to look for
+     * @param filter tells, for the page of a matching change, whether that change is part of the result
+     * @return the page of the matching changes the query asks for, the changes themselves, and whether more of them
+     *         matched
+     * @throws ReleaseNotesException when the changes could not be looked up, or one of them could not be read
+     * @since 2.8
+     */
+    default LoadedChangeSearchResult searchAndLoad(ChangeQuery query, Predicate<DocumentReference> filter)
+        throws ReleaseNotesException
+    {
+        ChangeSearchResult result = search(query, filter);
+        List<Change> changes = new ArrayList<>(result.getChanges().size());
+
+        for (DocumentReference reference : result.getChanges()) {
+            changes.add(getChange(reference));
+        }
+
+        return new LoadedChangeSearchResult(result, changes);
+    }
 }
