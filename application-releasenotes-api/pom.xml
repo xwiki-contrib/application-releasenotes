@@ -37,7 +37,7 @@
     <!-- The instructions that are not covered are the ones wrapping a store or a query failure, which the test
          store does not fail on: writing a property fails only when the store will not hand over the class of the
          object it belongs to, so replacing a release note and replacing a change each add one such block. -->
-    <xwiki.jacoco.instructionRatio>0.95</xwiki.jacoco.instructionRatio>
+    <xwiki.jacoco.instructionRatio>0.96</xwiki.jacoco.instructionRatio>
   </properties>
   <dependencies>
     <dependency>

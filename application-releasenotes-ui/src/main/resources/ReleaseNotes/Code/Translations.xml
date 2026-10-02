@@ -204,7 +204,8 @@ releasenotes.change.video.notSupported=Sorry, your browser doesn't support embed
 
 releasenotes.entry.versionRequired=A version is required to create a new release note entry.
 releasenotes.entry.notReserved=Could not take a page for the new change. Please try again.
-releasenotes.entry.addFailed=The change could not be added. Please check the product and the version you asked for, and the release note configuration of this wiki.</content>
+releasenotes.entry.addFailed=The change could not be added. Please check the product and the version you asked for, and the release note configuration of this wiki.
+releasenotes.entry.releaseNoteNotFound=There is no release note for this product and version. Create the release note first, then add changes to it.</content>
   <object>
     <name>ReleaseNotes.Code.Translations</name>
     <number>0</number>

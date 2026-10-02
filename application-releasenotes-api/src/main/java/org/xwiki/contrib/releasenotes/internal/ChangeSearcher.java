@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
@@ -65,18 +66,6 @@ public class ChangeSearcher
      */
     private static final String CHANGE_ALIAS = "changes";
 
-    private static final String PRODUCT = "product";
-
-    private static final String VERSION = "version";
-
-    private static final String AUDIENCE = "audience";
-
-    private static final String CATEGORY = "category";
-
-    private static final String IMPORTANCE = "importance";
-
-    private static final String SCREENSHOTS = "screenshots";
-
     /**
      * The condition matching the changes that are illustrated. The media of a change are stored as a large string,
      * which some databases give back as null rather than as the empty string when it was never set, so both are
@@ -113,14 +102,14 @@ public class ChangeSearcher
         List<String> conditions = new ArrayList<>();
         Map<String, String> bindings = new LinkedHashMap<>();
 
-        addFilters(conditions, bindings, ENTRY_ALIAS, PRODUCT, query.getProducts());
-        addFilters(conditions, bindings, CHANGE_ALIAS, AUDIENCE, query.getAudiences());
-        addFilters(conditions, bindings, ENTRY_ALIAS, VERSION, resolveVersions(query.getVersions()));
-        addFilters(conditions, bindings, CHANGE_ALIAS, CATEGORY, query.getCategories());
-        addFilters(conditions, bindings, CHANGE_ALIAS, IMPORTANCE, query.getImportances());
+        addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.PRODUCT, query.getProducts());
+        addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.AUDIENCE, query.getAudiences());
+        addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.VERSION, resolveVersions(query.getVersions()));
+        addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.CATEGORY, query.getCategories());
+        addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.IMPORTANCE, query.getImportances());
 
         if (query.getContainsScreenshots() != null) {
-            String illustrated = String.format(ILLUSTRATED_FORMAT, CHANGE_ALIAS, SCREENSHOTS);
+            String illustrated = String.format(ILLUSTRATED_FORMAT, CHANGE_ALIAS, ChangeXObjects.SCREENSHOTS);
             conditions.add(query.getContainsScreenshots() ? illustrated : "not " + illustrated);
         }
 
@@ -133,9 +122,16 @@ public class ChangeSearcher
             "from doc.object(%s) as %s, doc.object(%s) as %s where %s order by %s.%s desc, doc.fullName",
             serialize(ReleaseNotesReferences.ENTRY_CLASS), ENTRY_ALIAS,
             serialize(ReleaseNotesReferences.CHANGE_CLASS), CHANGE_ALIAS, String.join(" and ", conditions),
-            CHANGE_ALIAS, IMPORTANCE);
+            CHANGE_ALIAS, ChangeXObjects.IMPORTANCE);
 
-        return executeSearch(statement, bindings, query, filter);
+        // The excluded changes are left out along with the ones the filter refuses, i.e. before the page is cut, so
+        // that an excluded change neither takes the place of a change that follows it nor makes the search report a
+        // next page that holds nothing but excluded changes.
+        Set<DocumentReference> exclusions = query.getExclusions();
+        Predicate<DocumentReference> accepted =
+            exclusions.isEmpty() ? filter : filter.and(reference -> !exclusions.contains(reference));
+
+        return executeSearch(statement, bindings, query, accepted);
     }
 
     /**
@@ -153,7 +149,7 @@ public class ChangeSearcher
         int batchSize = (int) Math.min(Integer.MAX_VALUE, (long) query.getOffset() + query.getLimit() + 1);
         int skipped = 0;
         // The page is a list of its own rather than a view of the rows, so that the caller may modify the list it is
-        // given: the pages displaying the changes of a release note take their own exclusions out of it.
+        // given: the getChanges macro publishes it to wiki pages, which may take changes out of it on their own.
         List<String> names = new ArrayList<>();
         List<DocumentReference> references = new ArrayList<>();
 
@@ -291,7 +287,7 @@ public class ChangeSearcher
     {
         // The versions are read from the release notes, which is where they are written by hand, and only the
         // version of each of them is selected since that is all a comparison needs.
-        String statement = String.format("select distinct note.%s from Document doc, doc.object(%s) as note", VERSION,
+        String statement = String.format("select distinct note.version from Document doc, doc.object(%s) as note",
             serialize(ReleaseNotesReferences.RELEASE_NOTE_CLASS));
         List<String> versions;
 
