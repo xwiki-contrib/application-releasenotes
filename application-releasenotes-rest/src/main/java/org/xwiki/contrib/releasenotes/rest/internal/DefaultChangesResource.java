@@ -19,12 +19,13 @@
  */
 package org.xwiki.contrib.releasenotes.rest.internal;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 
 import javax.ws.rs.WebApplicationException;
@@ -38,17 +39,15 @@ import org.xwiki.contrib.releasenotes.ChangeFilter;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
-import org.xwiki.contrib.releasenotes.ChangeSearchResult;
+import org.xwiki.contrib.releasenotes.LoadedChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
+import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
 import org.xwiki.contrib.releasenotes.rest.ChangesResource;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ChangesRepresentation;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.rest.XWikiRestComponent;
-
-import com.xpn.xwiki.XWikiContext;
-import com.xpn.xwiki.XWikiException;
 
 /**
  * Default implementation of {@link ChangesResource}.
@@ -74,9 +73,6 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
     @Inject
     private RepresentationFactory representationFactory;
 
-    @Inject
-    private Provider<XWikiContext> xcontextProvider;
-
     @Override
     public ChangesRepresentation getChanges(String wikiName, String product, String version, String audience,
         String category, String importance, String containsScreenshots, boolean aggregated, String limit,
@@ -87,27 +83,30 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
                 throw new WebApplicationException(refuse(Response.Status.BAD_REQUEST, NO_RELEASE_NOTE_IN_URL));
             }
 
-            Map<String, Object> parameters = new HashMap<>();
-            parameters.put(ChangeQueryParser.AUDIENCE, audience);
-            parameters.put(ChangeQueryParser.CATEGORIES, category);
-            parameters.put(ChangeQueryParser.IMPORTANCE, importance);
-            parameters.put(ChangeQueryParser.CONTAINS_SCREENSHOTS, containsScreenshots);
-            parameters.put(ChangeQueryParser.LIMIT, limit);
-            parameters.put(ChangeQueryParser.OFFSET, offset);
+            // The filters a client passes are written in the syntax of the getChanges wiki macro, which the parser
+            // reads for both.
+            Map<String, Object> filters = new HashMap<>();
+            filters.put(ChangeQueryParser.AUDIENCE, audience);
+            filters.put(ChangeQueryParser.CATEGORIES, category);
+            filters.put(ChangeQueryParser.IMPORTANCE, importance);
+            filters.put(ChangeQueryParser.CONTAINS_SCREENSHOTS, containsScreenshots);
+            filters.put(ChangeQueryParser.LIMIT, limit);
+            filters.put(ChangeQueryParser.OFFSET, offset);
+            ChangeQuery query = this.changeQueryParser.parse(filters);
             // The product and the version are the release note of the URL, and not something a client filters: the
             // changes of another release note are reached through the URL of that release note.
-            parameters.put(ChangeQueryParser.PRODUCTS, exactly(product));
-            parameters.put(ChangeQueryParser.VERSIONS, getVersions(product, version, aggregated));
+            query.setProducts(List.of(exactly(product)));
+            query.setVersions(getVersions(product, version, aggregated));
 
-            ChangeQuery query = this.changeQueryParser.parse(parameters);
-            ChangeSearchResult result = this.changeManager.search(query, this::canView);
+            // The changes are read by the search that found them, which has already checked that the current user may
+            // view them: reading each of them back here would check that again, once per change.
+            LoadedChangeSearchResult result = this.entryPoint.searchAndLoad(query, getCaller());
             ChangesRepresentation representation = new ChangesRepresentation();
             representation.setHasMore(result.hasMore());
 
-            for (DocumentReference reference : result.getChanges()) {
-                representation.getChanges()
-                    .add(this.representationFactory.toRepresentation(this.changeManager.getChange(reference),
-                        reference));
+            for (int i = 0; i < result.getChanges().size(); i++) {
+                representation.getChanges().add(this.representationFactory
+                    .toRepresentation(result.getLoadedChanges().get(i), result.getChanges().get(i)));
             }
 
             return representation;
@@ -123,31 +122,28 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
                 return refuse(Response.Status.BAD_REQUEST, NO_RELEASE_NOTE_IN_URL);
             }
 
-            DocumentReference noteReference = this.releaseNoteManager.getReleaseNoteReference(product, version);
-            // The change is written to a new entry page of the release note, which is not known until it is taken,
-            // so the right checked is the right to edit the release note, as the pages of the application do before
-            // offering to add a change.
-            checkEditRight(noteReference);
-
-            if (!exists(noteReference)) {
-                return refuse(Response.Status.NOT_FOUND, String
-                    .format("There is no release note for the version [%s] of [%s].", version, product),
-                    noteReference);
-            }
-
-            if (change == null || StringUtils.isBlank(change.getTitle())) {
-                return refuse(Response.Status.BAD_REQUEST, "A change needs a title.");
-            }
-
-            Change created;
+            DocumentReference reference;
 
             try {
-                created = this.representationFactory.toChange(change, product, version);
-            } catch (IllegalArgumentException e) {
-                return refuse(Response.Status.BAD_REQUEST, e.getMessage());
-            }
+                // The change is read only once the current user is known to be allowed to add one to the release note
+                // of the URL and that release note is known to exist, so that a client that may not add a change is
+                // told so before it is told what is wrong with the change it sent.
+                reference = this.entryPoint.createChange(product, version, () -> toChange(change, product, version),
+                    getCaller());
+            } catch (WebApplicationException e) {
+                // What was posted is not a change that can be created.
+                return e.getResponse();
+            } catch (ReleaseNotesNotFoundException e) {
+                if (!this.releaseNoteManager.getReleaseNoteReference(product, version).equals(e.getReference())) {
+                    throw e;
+                }
 
-            DocumentReference reference = this.changeManager.createChange(created);
+                // The release note of the URL does not exist, which is answered as the other mistakes of the request
+                // are, in the representation the client asked for.
+                return refuse(Response.Status.NOT_FOUND, String
+                    .format("There is no release note for the version [%s] of [%s].", version, product),
+                    e.getReference());
+            }
 
             // The change is read back rather than echoed, because creation is template-driven: a property the client
             // left out holds the value the change template gives it, and not the null the request carried.
@@ -159,48 +155,57 @@ public class DefaultChangesResource extends AbstractReleaseNotesResource
     }
 
     /**
+     * @param change the change the client sent
+     * @param product the product of the release note of the URL
+     * @param version the version of that release note, in its long form
+     * @return the change to create
+     * @throws WebApplicationException answering the client with a 400 when the change has no title, or holds a value
+     *             that cannot be read
+     */
+    private Change toChange(ChangeRepresentation change, String product, String version)
+    {
+        if (change == null || StringUtils.isBlank(change.getTitle())) {
+            throw new WebApplicationException(refuse(Response.Status.BAD_REQUEST, "A change needs a title."));
+        }
+
+        try {
+            return this.representationFactory.toChange(change, product, version);
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(refuse(Response.Status.BAD_REQUEST, e.getMessage()));
+        }
+    }
+
+    /**
      * @param product the product of the release note of the URL
      * @param version the version of that release note, in its long form
      * @param aggregated whether the changes of the milestones and of the release candidates of that version are
      *            asked for too
-     * @return the version filter that release note is read with
+     * @return the version filters that release note is read with
      */
-    private String getVersions(String product, String version, boolean aggregated)
+    private List<ChangeFilter> getVersions(String product, String version, boolean aggregated)
     {
         if (!aggregated) {
-            return exactly(version);
+            return List.of(exactly(version));
         }
 
         // A final version gathers the changes of its milestones and of its release candidates, which are matched as
-        // patterns, so this filter is left to mean what it says rather than made exact.
-        return String.join(",",
-            this.releaseNoteManager.getAggregatedVersions(
-                this.releaseNoteManager.getReleaseNoteReference(product, version)));
+        // patterns, so these filters are left to mean what they say rather than made exact.
+        List<ChangeFilter> filters = new ArrayList<>();
+        for (String aggregatedVersion : this.releaseNoteManager
+            .getAggregatedVersions(this.releaseNoteManager.getReleaseNoteReference(product, version))) {
+            filters.add(new ChangeFilter(ChangeFilter.Operator.LIKE, aggregatedVersion));
+        }
+
+        return filters;
     }
 
     /**
      * @param value a value from the URL
-     * @return the filter matching that value and nothing else, since a value taken from the URL names one release
-     *         note rather than a pattern of them
+     * @return the filter matching that value and nothing else, since a value taken from the URL names what it names
+     *         rather than a pattern of it
      */
-    private static String exactly(String value)
+    private static ChangeFilter exactly(String value)
     {
-        return ChangeFilter.Operator.EQUALS.getSyntax() + value;
-    }
-
-    /**
-     * @param reference the page of a release note
-     * @return whether that page exists
-     * @throws ReleaseNotesException when the store could not be asked
-     */
-    private boolean exists(DocumentReference reference) throws ReleaseNotesException
-    {
-        XWikiContext xcontext = this.xcontextProvider.get();
-
-        try {
-            return xcontext.getWiki().exists(reference, xcontext);
-        } catch (XWikiException e) {
-            throw new ReleaseNotesException(String.format("Failed to look up the page [%s].", reference), e);
-        }
+        return new ChangeFilter(ChangeFilter.Operator.EQUALS, value);
     }
 }

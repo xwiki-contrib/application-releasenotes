@@ -22,6 +22,9 @@ package org.xwiki.contrib.releasenotes.internal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import jakarta.inject.Named;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,11 +33,15 @@ import org.xwiki.contrib.releasenotes.ChangeFilter;
 import org.xwiki.contrib.releasenotes.ChangeFilter.Operator;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
+import org.xwiki.model.reference.DocumentReference;
+import org.xwiki.model.reference.DocumentReferenceResolver;
 import org.xwiki.test.junit5.mockito.ComponentTest;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
+import org.xwiki.test.junit5.mockito.MockComponent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link DefaultChangeQueryParser}, i.e. for the filter language the pages of the application and the
@@ -52,6 +59,10 @@ class DefaultChangeQueryParserTest
 
     @InjectMockComponents
     private DefaultChangeQueryParser parser;
+
+    @MockComponent
+    @Named("current")
+    private DocumentReferenceResolver<String> documentReferenceResolver;
 
     /**
      * A value carrying no operator is a pattern, which is what makes {@code 8.3%} the way a release note asks for
@@ -269,6 +280,32 @@ class DefaultChangeQueryParserTest
 
         assertEquals(Boolean.TRUE, query.getContainsScreenshots());
         assertEquals(10, query.getLimit());
+    }
+
+    /**
+     * The changes to leave out are page names, read as the pages they name, and the blanks a list of them may hold
+     * name no page: resolved, they would stand for the default page of the wiki.
+     */
+    @Test
+    void theExclusionsAreReadAsThePagesTheyName()
+    {
+        DocumentReference first = new DocumentReference("xwiki", "Space", "First");
+        DocumentReference second = new DocumentReference("xwiki", "Space", "Second");
+        when(this.documentReferenceResolver.resolve("Space.First")).thenReturn(first);
+        when(this.documentReferenceResolver.resolve("Space.Second")).thenReturn(second);
+
+        assertEquals(Set.of(first, second),
+            parse(ChangeQueryParser.EXCLUSIONS, " Space.First , ,Space.Second,").getExclusions());
+    }
+
+    /**
+     * A query that is not asked to leave any change out leaves none out.
+     */
+    @Test
+    void noExclusionLeavesNoChangeOut()
+    {
+        assertEquals(Set.of(), this.parser.parse(Map.of()).getExclusions());
+        assertEquals(Set.of(), parse(ChangeQueryParser.EXCLUSIONS, "").getExclusions());
     }
 
     /**

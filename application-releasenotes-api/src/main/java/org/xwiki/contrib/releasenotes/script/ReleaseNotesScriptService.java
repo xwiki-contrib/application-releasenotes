@@ -26,7 +26,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
-import org.apache.commons.lang3.StringUtils;
 import org.xwiki.bridge.DocumentAccessBridge;
 import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.Change;
@@ -36,15 +35,15 @@ import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
+import org.xwiki.contrib.releasenotes.ReleaseNoteSection;
 import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
-import org.xwiki.contrib.releasenotes.internal.ProductResolver;
+import org.xwiki.contrib.releasenotes.ReleaseNotesNotFoundException;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesCaller;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.script.service.ScriptService;
-import org.xwiki.security.authorization.AuthorizationManager;
-import org.xwiki.security.authorization.ContextualAuthorizationManager;
-import org.xwiki.security.authorization.Right;
 import org.xwiki.stability.Unstable;
 
 /**
@@ -79,25 +78,16 @@ public class ReleaseNotesScriptService implements ScriptService
     private ReleaseNoteManager releaseNoteManager;
 
     @Inject
-    private ChangeManager changeManager;
-
-    @Inject
     private ChangeQueryParser changeQueryParser;
 
     @Inject
     private ReleaseNotesConfiguration configuration;
 
     @Inject
-    private ContextualAuthorizationManager authorization;
-
-    @Inject
-    private AuthorizationManager authorAuthorization;
+    private ReleaseNotesEntryPoint entryPoint;
 
     @Inject
     private DocumentAccessBridge documentAccessBridge;
-
-    @Inject
-    private ProductResolver productResolver;
 
     /**
      * @param note the release note to create
@@ -109,9 +99,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public DocumentReference createReleaseNote(ReleaseNote note) throws ReleaseNotesException
     {
-        checkEditRight(note.getProduct(), note.getVersion());
-
-        return this.releaseNoteManager.createReleaseNote(note);
+        return this.entryPoint.createReleaseNote(note, getCaller());
     }
 
     /**
@@ -134,9 +122,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public ReleaseNote getReleaseNote(DocumentReference reference) throws ReleaseNotesException
     {
-        checkViewRight(reference);
-
-        return this.releaseNoteManager.getReleaseNote(reference);
+        return this.entryPoint.getReleaseNote(reference, getCaller());
     }
 
     /**
@@ -150,9 +136,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public ReleaseNote updateReleaseNote(ReleaseNote note) throws ReleaseNotesException
     {
-        checkEditRight(note.getProduct(), note.getVersion());
-
-        return this.releaseNoteManager.updateReleaseNote(note);
+        return this.entryPoint.updateReleaseNote(note, getCaller());
     }
 
     /**
@@ -163,7 +147,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public List<ReleaseNote> getReleaseNotes(String product) throws ReleaseNotesException
     {
-        return this.releaseNoteManager.getReleaseNotes(product, this::canView);
+        return this.entryPoint.getReleaseNotes(product, getCaller());
     }
 
     /**
@@ -181,17 +165,13 @@ public class ReleaseNotesScriptService implements ScriptService
      * @return the page the change was created in
      * @throws ReleaseNotesAccessDeniedException when the current user or the author of the calling script may not
      *             edit the page
+     * @throws ReleaseNotesNotFoundException when there is no release note for the version of the change, since 2.8
      * @throws ReleaseNotesException when it could not be created
      * @see ChangeManager#createChange(Change)
      */
     public DocumentReference createChange(Change change) throws ReleaseNotesException
     {
-        // A change is written to a new entry page of its release note, which is not known until it is taken, so the
-        // right checked is the right to edit the release note, as the pages of the application do before offering
-        // to add a change.
-        checkEditRight(change.getProduct(), change.getVersion());
-
-        return this.changeManager.createChange(change);
+        return this.entryPoint.createChange(change, getCaller());
     }
 
     /**
@@ -206,9 +186,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public Change updateChange(DocumentReference reference, Change change) throws ReleaseNotesException
     {
-        checkEditRight(reference);
-
-        return this.changeManager.updateChange(reference, change);
+        return this.entryPoint.updateChange(reference, change, getCaller());
     }
 
     /**
@@ -222,9 +200,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public DocumentReference reserveNextEntry(String product, String version) throws ReleaseNotesException
     {
-        checkEditRight(product, version);
-
-        return this.changeManager.reserveNextEntry(product, version);
+        return this.entryPoint.reserveNextEntry(product, version, getCaller());
     }
 
     /**
@@ -236,9 +212,7 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public Change getChange(DocumentReference reference) throws ReleaseNotesException
     {
-        checkViewRight(reference);
-
-        return this.changeManager.getChange(reference);
+        return this.entryPoint.getChange(reference, getCaller());
     }
 
     /**
@@ -266,7 +240,26 @@ public class ReleaseNotesScriptService implements ScriptService
      */
     public ChangeSearchResult search(ChangeQuery query) throws ReleaseNotesException
     {
-        return this.changeManager.search(query, this::canView);
+        return this.entryPoint.search(query, getCaller());
+    }
+
+    /**
+     * Splits the changes a release note displays into its sections, each of which is searched on its own. For
+     * instance:
+     * <pre>{@code
+     * #foreach ($section in $services.releasenotes.getSections($query))
+     *   #set ($mainChanges = $services.releasenotes.search($section.mainChanges))
+     * #end
+     * }</pre>
+     *
+     * @param query the changes the release note displays, and how many of them each part of a section displays
+     * @return the sections of the release note, in the order it displays them
+     * @since 2.8
+     * @see ReleaseNoteSection#of(ChangeQuery)
+     */
+    public List<ReleaseNoteSection> getSections(ChangeQuery query)
+    {
+        return ReleaseNoteSection.of(query);
     }
 
     /**
@@ -288,64 +281,11 @@ public class ReleaseNotesScriptService implements ScriptService
     }
 
     /**
-     * The components of the application read a page whoever asks for it, since the rights are checked where a call
-     * enters the wiki: this is where a script call does. Only the current user is checked, as the platform does when a
-     * script reads a page.
-     *
-     * @param reference a page a script asked to read
-     * @return whether the current user may view that page
+     * @return the caller of a script service, which is a script: its author is checked along with the current user
+     *         for every write, since this service is reachable with the script right alone
      */
-    private boolean canView(DocumentReference reference)
+    private ReleaseNotesCaller getCaller()
     {
-        return this.authorization.hasAccess(Right.VIEW, reference);
-    }
-
-    private void checkViewRight(DocumentReference reference) throws ReleaseNotesAccessDeniedException
-    {
-        if (!canView(reference)) {
-            throw new ReleaseNotesAccessDeniedException(
-                String.format("The current user is not allowed to view the page [%s].", reference), reference);
-        }
-    }
-
-    /**
-     * Checks that the page of the release note of the passed product and version may be written.
-     * <p>
-     * A release note without a version has no page whose right could be checked, and is refused by the manager
-     * before anything is written, so it is left for the manager to refuse.
-     *
-     * @param product the product of the release note, or {@code null} for the product configured for the wiki
-     * @param version the version of the release note, in its long form
-     */
-    private void checkEditRight(String product, String version) throws ReleaseNotesException
-    {
-        if (StringUtils.isNotBlank(version)) {
-            checkEditRight(this.releaseNoteManager.getReleaseNoteReference(this.productResolver.resolve(product),
-                version.trim()));
-        }
-    }
-
-    /**
-     * The components of the application write a page whoever asks them to, since the rights are checked where a call
-     * enters the wiki: this is where a script call does. The right is checked for the current user <em>and</em> for
-     * the author of the calling script, because this service is reachable with the script right alone: a check done
-     * for the user only would let a script write on behalf of whoever happens to be reading the page it is on.
-     *
-     * @param reference a page a script asked to write
-     */
-    private void checkEditRight(DocumentReference reference) throws ReleaseNotesAccessDeniedException
-    {
-        if (!this.authorization.hasAccess(Right.EDIT, reference)) {
-            throw new ReleaseNotesAccessDeniedException(
-                String.format("The current user is not allowed to edit the page [%s].", reference), reference);
-        }
-
-        DocumentReference author = this.documentAccessBridge.getCurrentAuthorReference();
-
-        if (!this.authorAuthorization.hasAccess(Right.EDIT, author, reference)) {
-            throw new ReleaseNotesAccessDeniedException(String.format(
-                "The author [%s] of the calling script is not allowed to edit the page [%s].", author, reference),
-                reference);
-        }
+        return ReleaseNotesCaller.currentUserAndAuthor(this.documentAccessBridge.getCurrentAuthorReference());
     }
 }

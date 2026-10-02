@@ -20,13 +20,17 @@
 package org.xwiki.contrib.releasenotes.internal;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +40,8 @@ import org.xwiki.contrib.releasenotes.ChangeFilter;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.Importance;
+import org.xwiki.model.reference.DocumentReference;
+import org.xwiki.model.reference.DocumentReferenceResolver;
 import org.xwiki.stability.Unstable;
 
 /**
@@ -64,6 +70,10 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         ChangeFilter.Operator.LTE, ChangeFilter.Operator.GT, ChangeFilter.Operator.LT,
         ChangeFilter.Operator.EQUALS);
 
+    @Inject
+    @Named("current")
+    private DocumentReferenceResolver<String> documentReferenceResolver;
+
     @Override
     public ChangeQuery parse(Map<String, ?> parameters)
     {
@@ -77,6 +87,7 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         setFilters(parameters, CATEGORIES, query::setCategories, UnaryOperator.identity());
         setFilters(parameters, IMPORTANCE, query::setImportances, DefaultChangeQueryParser::parseImportance);
         setContainsScreenshots(parameters, query);
+        setExclusions(parameters, query);
 
         int limit = getNumber(parameters, LIMIT, ChangeQuery.DEFAULT_LIMIT);
         // A limit is a bound: a value that would remove it, or that would make the search return nothing at all, is
@@ -148,13 +159,9 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
      */
     private static String parseImportance(String value)
     {
-        for (Importance importance : Importance.values()) {
-            if (importance.name().equalsIgnoreCase(value)) {
-                return importance.getStoredValue();
-            }
-        }
+        Importance importance = Importance.fromName(value);
 
-        return value;
+        return importance == null ? value : importance.getStoredValue();
     }
 
     /**
@@ -169,6 +176,29 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         if (Boolean.TRUE.toString().equals(value) || Boolean.FALSE.toString().equals(value)) {
             query.setContainsScreenshots(Boolean.valueOf(value));
         }
+    }
+
+    /**
+     * Reads the changes to leave out, which are page names rather than values to compare, so they carry no operator.
+     * A blank name is skipped, since it would otherwise resolve to the default page of the wiki.
+     */
+    private void setExclusions(Map<String, ?> parameters, ChangeQuery query)
+    {
+        String listAsString = getString(parameters, EXCLUSIONS);
+
+        if (listAsString == null) {
+            return;
+        }
+
+        Set<DocumentReference> exclusions = new LinkedHashSet<>();
+
+        for (String name : StringUtils.split(listAsString, VALUE_SEPARATOR)) {
+            if (StringUtils.isNotBlank(name)) {
+                exclusions.add(this.documentReferenceResolver.resolve(name.trim()));
+            }
+        }
+
+        query.setExclusions(exclusions);
     }
 
     private int getNumber(Map<String, ?> parameters, String name, int defaultValue)

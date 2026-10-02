@@ -19,6 +19,8 @@
  */
 package org.xwiki.contrib.releasenotes;
 
+import java.util.Locale;
+
 import org.xwiki.stability.Unstable;
 
 /**
@@ -54,6 +56,32 @@ public enum Importance
     public String getStoredValue()
     {
         return String.valueOf(this.level);
+    }
+
+    /**
+     * @return how this importance is written by a person or a client, which is the lower cased name of the value
+     *         (e.g. {@code high}) and not the number it is stored as
+     * @since 2.8
+     */
+    public String getName()
+    {
+        return name().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * @param name the name of an importance, whatever its case (e.g. {@code high} or {@code HIGH})
+     * @return the matching importance, or {@code null} when the passed name is not the name of one of them
+     * @since 2.8
+     */
+    public static Importance fromName(String name)
+    {
+        for (Importance importance : values()) {
+            if (importance.name().equalsIgnoreCase(name)) {
+                return importance;
+            }
+        }
+
+        return null;
     }
 
     /**

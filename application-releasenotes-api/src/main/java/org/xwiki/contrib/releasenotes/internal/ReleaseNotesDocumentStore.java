@@ -36,7 +36,7 @@ import com.xpn.xwiki.XWikiException;
 import com.xpn.xwiki.doc.XWikiDocument;
 
 /**
- * Writes a page of the application, as the current user.
+ * Loads the pages of the application, and writes them as the current user.
  * <p>
  * No right is checked here, as {@code XWiki#saveDocument} checks none: the entry points of the application, its REST
  * endpoints and its script service, check the edit right of their caller before anything is written.
@@ -44,15 +44,32 @@ import com.xpn.xwiki.doc.XWikiDocument;
  * @version $Id$
  * @since 2.7
  */
-@Component(roles = ReleaseNotesDocumentWriter.class)
+@Component(roles = ReleaseNotesDocumentStore.class)
 @Singleton
-public class ReleaseNotesDocumentWriter
+public class ReleaseNotesDocumentStore
 {
     @Inject
     private Provider<XWikiContext> xcontextProvider;
 
     @Inject
     private UserReferenceResolver<CurrentUserReference> currentUserResolver;
+
+    /**
+     * @param reference the page to load
+     * @return that page, which is a new page when it does not exist, and is otherwise the instance the store holds in
+     *         its cache, which a caller about to modify it must clone first
+     * @throws ReleaseNotesException when the page could not be loaded
+     */
+    public XWikiDocument load(DocumentReference reference) throws ReleaseNotesException
+    {
+        XWikiContext xcontext = this.xcontextProvider.get();
+
+        try {
+            return xcontext.getWiki().getDocument(reference, xcontext);
+        } catch (XWikiException e) {
+            throw new ReleaseNotesException(String.format("Failed to load the page [%s].", reference), e);
+        }
+    }
 
     /**
      * Saves the passed page as the current user.

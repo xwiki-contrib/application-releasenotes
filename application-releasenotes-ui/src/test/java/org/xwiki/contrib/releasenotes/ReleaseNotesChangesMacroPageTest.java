@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.jsoup.nodes.Document;
@@ -58,6 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -160,9 +162,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
             return this.query;
         });
 
-        // A PageTest does not register $services.rendering, which the macro escapes the values it places into the
-        // getChanges calls with. The stand-in escapes the way the platform does, so that what the parser gets back
-        // is what these tests assert on.
+        // A PageTest does not register $services.rendering, which the pages the release note is rendered with escape
+        // values with. The stand-in escapes the way the platform does.
         this.componentManager.registerComponent(ScriptService.class, "rendering",
             new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
 
@@ -182,6 +183,29 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
 
         assertEquals(AUDIENCE_COUNT, renderReleaseNote(2).select("div.warningmessage").size(),
             "Each section of the release note left a change out, so each of them must report it.");
+    }
+
+    /**
+     * An excluded change is left out before the limit applies: it must neither take the place of a change the
+     * section can display, nor make the section report changes it left out when it left out nothing but it.
+     */
+    @Test
+    void excludedChangeDoesNotCountAgainstTheLimit() throws Exception
+    {
+        // One change more than the sections are allowed to display, the first of which is excluded. Those are all the
+        // rows the database holds: the search reads a second batch to fill the page, and that one has to be empty.
+        AtomicInteger offset = new AtomicInteger();
+        when(this.query.setOffset(anyInt())).thenAnswer(invocation -> {
+            offset.set(invocation.getArgument(0));
+            return this.query;
+        });
+        when(this.query.execute()).thenAnswer(invocation -> offset.get() == 0 ? changes(3) : List.of());
+
+        Document releaseNote = renderReleaseNote("8.3", "8.3", PRODUCT,
+            String.format("limit=\"2\" exclusions=\"%s\"", changes(1).get(0)));
+
+        assertEquals(0, releaseNote.select("div.warningmessage").size(),
+            "Every change that is not excluded fits in the limit, so no section left a change out.");
     }
 
     @Test
@@ -296,10 +320,9 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The product is plain text stored in the release note xobject, but the macro places it into the parameters of
-     * the getChanges calls it builds, which are re-parsed as wiki syntax, so it must be emitted escaped: left raw,
-     * a product carrying a double quote would close the parameter and the rest of it would be parsed as wiki
-     * syntax of its own, macros included.
+     * The product is plain text stored in the release note xobject, so it must reach the search as the one filter it
+     * is, and never be parsed as wiki syntax: a product carrying a double quote must not close a macro parameter and
+     * have the rest of it rendered as wiki syntax of its own, macros included.
      */
     @Test
     void productIsEscapedBeforeItIsRenderedAsWikiSyntax() throws Exception
@@ -310,7 +333,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote("8.3", "8.3", product, 100);
 
         assertTrue(html.select("b").isEmpty(),
-            "The product must not close the getChanges call and have the rest of it rendered as wiki syntax: "
+            "The product must not close a macro call and have the rest of it rendered as wiki syntax: "
                 + html.body().html());
         assertEquals(2 * AUDIENCE_COUNT, this.statements.size(), "Expected two queries per audience section.");
         for (int index = 0; index < this.statements.size(); index++) {
@@ -320,9 +343,8 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
-     * The version comes from the name of the space holding the release note, and the macro places the versions it
-     * derives from it into the parameters of the getChanges calls, so those too must be emitted escaped: left raw,
-     * a space name carrying a double quote would close the parameter and the rest of it would be parsed as wiki
+     * The version comes from the name of the space holding the release note, which is not wiki syntax either: a
+     * space name carrying a double quote must not close a macro parameter and have the rest of it rendered as wiki
      * syntax of its own, macros included.
      */
     @Test
@@ -336,7 +358,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         Document html = renderReleaseNote(shortVersion, "8.3", PRODUCT, 100);
 
         assertTrue(html.select("b").isEmpty(),
-            "The space name must not close the getChanges call and have the rest of it rendered as wiki syntax: "
+            "The space name must not close a macro call and have the rest of it rendered as wiki syntax: "
                 + html.body().html());
         assertEquals(2 * AUDIENCE_COUNT, this.statements.size(), "Expected two queries per audience section.");
         for (int index = 0; index < this.statements.size(); index++) {
@@ -507,6 +529,19 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     private Document renderReleaseNote(String shortVersion, String version, String product, int limit)
         throws Exception
     {
+        return renderReleaseNote(shortVersion, version, product, String.format("limit=\"%s\"", limit));
+    }
+
+    /**
+     * @param shortVersion the name of the space holding the release note
+     * @param version the value stored in the {@code version} field of the release note xobject
+     * @param product the value stored in the {@code product} field of the release note xobject
+     * @param macroParameters the parameters of the macro call, as they are written in wiki syntax
+     * @return the rendered release note
+     */
+    private Document renderReleaseNote(String shortVersion, String version, String product, String macroParameters)
+        throws Exception
+    {
         loadPage(RELEASE_NOTE_CLASS);
 
         XWikiDocument releaseNote = new XWikiDocument(new DocumentReference("xwiki",
@@ -515,7 +550,7 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
         BaseObject releaseNoteObject = releaseNote.newXObject(RELEASE_NOTE_CLASS, this.context);
         releaseNoteObject.setStringValue("product", product);
         releaseNoteObject.setStringValue("version", version);
-        releaseNote.setContent(String.format("{{releasenotechanges limit=\"%s\"/}}", limit));
+        releaseNote.setContent(String.format("{{releasenotechanges %s/}}", macroParameters));
         this.xwiki.saveDocument(releaseNote, this.context);
         // The macro reads the version off the page it is on, so that page has to be the one in the context.
         this.context.setDoc(releaseNote);

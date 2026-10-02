@@ -338,8 +338,34 @@ class ChangeSearcherTest
     }
 
     /**
-     * The pages displaying the changes of a release note take their own exclusions out of the list they are given,
-     * so that list has to be theirs to modify.
+     * An excluded change is left out before the page is cut: it takes the place of no change that follows it, and a
+     * page left with nothing beyond it but excluded changes does not announce a next one.
+     */
+    @Test
+    void theExcludedChangesAreLeftOutBeforeThePageIsCut() throws Exception
+    {
+        // The batch is full, so the next one is read, and the database has no more rows to give.
+        doReturn(List.of("excluded", CHANGE, "second"), List.of()).when(this.query).execute();
+        DocumentReference excluded = new DocumentReference("xwiki", "Space", "excluded");
+        DocumentReference change = new DocumentReference("xwiki", "Space", "change");
+        DocumentReference second = new DocumentReference("xwiki", "Space", "second");
+        when(this.documentReferenceResolver.resolve("excluded")).thenReturn(excluded);
+        when(this.documentReferenceResolver.resolve(CHANGE)).thenReturn(change);
+        when(this.documentReferenceResolver.resolve("second")).thenReturn(second);
+
+        ChangeQuery changeQuery = new ChangeQuery();
+        changeQuery.setLimit(2);
+        changeQuery.setExclusions(Set.of(excluded));
+        ChangeSearchResult result = this.searcher.search(changeQuery, this.filter);
+
+        assertEquals(List.of(CHANGE, "second"), result.getChangeNames());
+        assertEquals(List.of(change, second), result.getChanges());
+        assertFalse(result.hasMore());
+    }
+
+    /**
+     * The getChanges macro publishes the list of the result to wiki pages, which may take changes out of it, so that
+     * list has to be theirs to modify.
      */
     @Test
     void theChangesOfTheResultMayBeRemovedFromIt() throws Exception

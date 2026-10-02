@@ -21,45 +21,40 @@ package org.xwiki.contrib.releasenotes.script;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.bridge.DocumentAccessBridge;
-import org.xwiki.contrib.releasenotes.ChangeManager;
+import org.xwiki.contrib.releasenotes.Audience;
+import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
 import org.xwiki.contrib.releasenotes.ChangeQueryParser;
 import org.xwiki.contrib.releasenotes.ChangeSearchResult;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteManager;
-import org.xwiki.contrib.releasenotes.ReleaseNotesAccessDeniedException;
+import org.xwiki.contrib.releasenotes.ReleaseNoteSection;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
-import org.xwiki.contrib.releasenotes.internal.ProductResolver;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesCaller;
+import org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint;
 import org.xwiki.model.reference.DocumentReference;
-import org.xwiki.security.authorization.AuthorizationManager;
-import org.xwiki.security.authorization.ContextualAuthorizationManager;
-import org.xwiki.security.authorization.Right;
 import org.xwiki.test.junit5.mockito.ComponentTest;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
 import org.xwiki.test.junit5.mockito.MockComponent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link ReleaseNotesScriptService}, which is the one layer that must add nothing of its own: a rule
- * it enforced here would be a rule a REST or a Java caller escapes, since the components below are what all three
- * go through.
+ * Unit tests for {@link ReleaseNotesScriptService}, which only translates a script call into a call of
+ * {@link ReleaseNotesEntryPoint}: a rule it enforced here would be a rule a REST caller escapes. What it adds is who
+ * the caller is, a script whose author is checked along with the current user.
  *
  * @version $Id$
  */
@@ -78,10 +73,10 @@ class ReleaseNotesScriptServiceTest
     private ReleaseNotesScriptService service;
 
     @MockComponent
-    private ReleaseNoteManager releaseNoteManager;
+    private ReleaseNotesEntryPoint entryPoint;
 
     @MockComponent
-    private ChangeManager changeManager;
+    private ReleaseNoteManager releaseNoteManager;
 
     @MockComponent
     private ChangeQueryParser changeQueryParser;
@@ -90,187 +85,90 @@ class ReleaseNotesScriptServiceTest
     private ReleaseNotesConfiguration configuration;
 
     @MockComponent
-    private ContextualAuthorizationManager authorization;
-
-    @MockComponent
-    private AuthorizationManager authorAuthorization;
-
-    @MockComponent
     private DocumentAccessBridge documentAccessBridge;
 
-    @MockComponent
-    private ProductResolver productResolver;
-
     @BeforeEach
-    void setUp() throws Exception
+    void setUp()
     {
-        when(this.authorization.hasAccess(any(Right.class), any())).thenReturn(true);
-        when(this.authorAuthorization.hasAccess(any(Right.class), any(), any())).thenReturn(true);
         when(this.documentAccessBridge.getCurrentAuthorReference()).thenReturn(AUTHOR);
-        when(this.productResolver.resolve(any())).thenReturn("XWiki");
-        when(this.releaseNoteManager.getReleaseNoteReference("XWiki", "8.3")).thenReturn(RELEASE_NOTE);
     }
 
     @Test
-    void theReleaseNotesAreHandedToTheReleaseNoteManager() throws Exception
+    void theReleaseNotesAreHandedToTheEntryPoint() throws Exception
     {
         ReleaseNote note = new ReleaseNote();
         List<ReleaseNote> notes = List.of(note);
-        when(this.releaseNoteManager.createReleaseNote(note)).thenReturn(RELEASE_NOTE);
+        when(this.entryPoint.createReleaseNote(eq(note), any())).thenReturn(RELEASE_NOTE);
+        when(this.entryPoint.getReleaseNote(eq(RELEASE_NOTE), any())).thenReturn(note);
+        when(this.entryPoint.getReleaseNotes(eq("XWiki"), any())).thenReturn(notes);
+        when(this.entryPoint.updateReleaseNote(eq(note), any())).thenReturn(note);
         when(this.releaseNoteManager.getReleaseNoteReference("XWiki", "8.3")).thenReturn(RELEASE_NOTE);
-        when(this.releaseNoteManager.getReleaseNote(RELEASE_NOTE)).thenReturn(note);
-        when(this.releaseNoteManager.getReleaseNotes(eq("XWiki"), any())).thenReturn(notes);
         when(this.releaseNoteManager.getAggregatedVersions(RELEASE_NOTE)).thenReturn(List.of("8.3"));
-        when(this.releaseNoteManager.updateReleaseNote(note)).thenReturn(note);
 
         assertEquals(RELEASE_NOTE, this.service.createReleaseNote(note));
         assertSame(note, this.service.updateReleaseNote(note));
-        assertEquals(RELEASE_NOTE, this.service.getReleaseNoteReference("XWiki", "8.3"));
         assertSame(note, this.service.getReleaseNote(RELEASE_NOTE));
         assertSame(notes, this.service.getReleaseNotes("XWiki"));
+        // Naming a page, and naming the versions a release note displays, read nothing a right protects.
+        assertEquals(RELEASE_NOTE, this.service.getReleaseNoteReference("XWiki", "8.3"));
         assertEquals(List.of("8.3"), this.service.getAggregatedVersions(RELEASE_NOTE));
     }
 
     @Test
-    void theChangesAreHandedToTheChangeManager() throws Exception
+    void theChangesAreHandedToTheEntryPoint() throws Exception
     {
         Change change = new Change();
-        when(this.changeManager.createChange(change)).thenReturn(ENTRY);
-        when(this.changeManager.reserveNextEntry("XWiki", "8.3")).thenReturn(ENTRY);
-        when(this.changeManager.getChange(ENTRY)).thenReturn(change);
-        when(this.changeManager.updateChange(ENTRY, change)).thenReturn(change);
+        Map<String, String> parameters = Map.of("versions", "8.3");
+        ChangeQuery query = new ChangeQuery();
+        ChangeSearchResult result = new ChangeSearchResult(List.of(), List.of(), false);
+        when(this.entryPoint.createChange(eq(change), any())).thenReturn(ENTRY);
+        when(this.entryPoint.reserveNextEntry(eq("XWiki"), eq("8.3"), any())).thenReturn(ENTRY);
+        when(this.entryPoint.getChange(eq(ENTRY), any())).thenReturn(change);
+        when(this.entryPoint.updateChange(eq(ENTRY), eq(change), any())).thenReturn(change);
+        when(this.changeQueryParser.parse(parameters)).thenReturn(query);
+        when(this.entryPoint.search(eq(query), any())).thenReturn(result);
 
         assertEquals(ENTRY, this.service.createChange(change));
         assertSame(change, this.service.updateChange(ENTRY, change));
         assertEquals(ENTRY, this.service.reserveNextEntry("XWiki", "8.3"));
         assertSame(change, this.service.getChange(ENTRY));
-    }
-
-    @Test
-    void theSearchesAreHandedToTheParserAndToTheChangeManager() throws Exception
-    {
-        Map<String, String> parameters = Map.of("versions", "8.3");
-        ChangeQuery query = new ChangeQuery();
-        ChangeSearchResult result = new ChangeSearchResult(List.of(), List.of(), false);
-        when(this.changeQueryParser.parse(parameters)).thenReturn(query);
-        when(this.changeManager.search(eq(query), any())).thenReturn(result);
-
         assertSame(query, this.service.parseQuery(parameters));
         assertSame(result, this.service.search(query));
     }
 
     /**
-     * The components of the application read a page whoever asks for it, so the script service is where the view
-     * right of a script call is checked.
+     * The service is reachable with the script right alone, so the entry point is told the caller is a script, whose
+     * author it checks along with the current user: a check done for the user only would let a script write on behalf
+     * of whoever reads the page it is on.
      */
     @Test
-    void aReleaseNoteTheCurrentUserCannotViewIsNotRead() throws Exception
+    void theCallerIsTheScriptAndItsAuthor() throws Exception
     {
-        when(this.authorization.hasAccess(Right.VIEW, RELEASE_NOTE)).thenReturn(false);
-
-        ReleaseNotesAccessDeniedException exception =
-            assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.service.getReleaseNote(RELEASE_NOTE));
-
-        assertEquals(RELEASE_NOTE, exception.getReference());
-        verify(this.releaseNoteManager, never()).getReleaseNote(any());
-    }
-
-    @Test
-    void aChangeTheCurrentUserCannotViewIsNotRead() throws Exception
-    {
-        when(this.authorization.hasAccess(Right.VIEW, ENTRY)).thenReturn(false);
-
-        ReleaseNotesAccessDeniedException exception =
-            assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.service.getChange(ENTRY));
-
-        assertEquals("The current user is not allowed to view the page "
-            + "[xwiki:ReleaseNotes.Data.XWiki.8\\.3.Entry001.WebHome].", exception.getMessage());
-        verify(this.changeManager, never()).getChange(any());
-    }
-
-    /**
-     * The release notes and the changes are listed with a filter that accepts the pages the current user can view
-     * and refuses the others, which the managers apply before cutting the result into pages.
-     */
-    @Test
-    void theListingsLeaveOutWhatTheCurrentUserCannotView() throws Exception
-    {
-        when(this.authorization.hasAccess(Right.VIEW, ENTRY)).thenReturn(false);
-
-        this.service.getReleaseNotes("XWiki");
-        this.service.search(new ChangeQuery());
-
-        ArgumentCaptor<Predicate<DocumentReference>> noteFilter = ArgumentCaptor.captor();
-        verify(this.releaseNoteManager).getReleaseNotes(eq("XWiki"), noteFilter.capture());
-        ArgumentCaptor<Predicate<DocumentReference>> changeFilter = ArgumentCaptor.captor();
-        verify(this.changeManager).search(any(), changeFilter.capture());
-
-        for (Predicate<DocumentReference> filter : List.of(noteFilter.getValue(), changeFilter.getValue())) {
-            assertTrue(filter.test(RELEASE_NOTE));
-            assertFalse(filter.test(ENTRY));
-        }
-    }
-
-    /**
-     * The components of the application write a page whoever asks them to, so the script service is where the edit
-     * right of a script call is checked. Every write of a release note, and every new change, which is written to an
-     * entry page of its release note that is only known once taken, is checked on the page of that release note.
-     */
-    @Test
-    void aUserWhoCannotEditTheReleaseNoteWritesNothingToIt() throws Exception
-    {
-        when(this.authorization.hasAccess(Right.EDIT, RELEASE_NOTE)).thenReturn(false);
-        ReleaseNote note = new ReleaseNote();
-        note.setVersion("8.3");
         Change change = new Change();
-        change.setVersion("8.3");
 
-        assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.service.createReleaseNote(note));
-        assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.service.updateReleaseNote(note));
-        assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.service.createChange(change));
-        ReleaseNotesAccessDeniedException exception = assertThrows(ReleaseNotesAccessDeniedException.class,
-            () -> this.service.reserveNextEntry(null, "8.3"));
+        this.service.updateChange(ENTRY, change);
 
-        // A release note without a product is the release note of the product configured for the wiki, which is the
-        // page whose right is checked.
-        assertEquals("The current user is not allowed to edit the page "
-            + "[xwiki:ReleaseNotes.Data.XWiki.8\\.3.WebHome].", exception.getMessage());
-        verify(this.releaseNoteManager, never()).createReleaseNote(any());
-        verify(this.releaseNoteManager, never()).updateReleaseNote(any());
-        verify(this.changeManager, never()).createChange(any());
-        verify(this.changeManager, never()).reserveNextEntry(any(), any());
+        ArgumentCaptor<ReleaseNotesCaller> caller = ArgumentCaptor.captor();
+        verify(this.entryPoint).updateChange(eq(ENTRY), eq(change), caller.capture());
+        assertTrue(caller.getValue().isScripted());
+        assertEquals(AUTHOR, caller.getValue().getAuthor());
     }
 
     /**
-     * The right of the author of the calling script is checked too: this service is reachable with the script right
-     * alone, so a check done for the user only would let a script write on behalf of whoever reads the page it is on.
+     * A script with no author is still a script, and its author is checked, as the guest user.
      */
     @Test
-    void aScriptAuthorWhoCannotEditThePageWritesNothingToIt() throws Exception
+    void aScriptWithoutAnAuthorIsStillCheckedForIt() throws Exception
     {
-        when(this.authorAuthorization.hasAccess(Right.EDIT, AUTHOR, ENTRY)).thenReturn(false);
-
-        ReleaseNotesAccessDeniedException exception = assertThrows(ReleaseNotesAccessDeniedException.class,
-            () -> this.service.updateChange(ENTRY, new Change()));
-
-        assertEquals("The author [xwiki:XWiki.Author] of the calling script is not allowed to edit the page "
-            + "[xwiki:ReleaseNotes.Data.XWiki.8\\.3.Entry001.WebHome].", exception.getMessage());
-        assertEquals(ENTRY, exception.getReference());
-        verify(this.changeManager, never()).updateChange(any(), any());
-    }
-
-    /**
-     * A release note without a version names no page, and is left for the manager to refuse.
-     */
-    @Test
-    void aReleaseNoteWithoutAVersionIsLeftForTheManagerToRefuse() throws Exception
-    {
+        when(this.documentAccessBridge.getCurrentAuthorReference()).thenReturn(null);
         ReleaseNote note = new ReleaseNote();
 
         this.service.createReleaseNote(note);
 
-        verify(this.authorization, never()).hasAccess(eq(Right.EDIT), any());
-        verify(this.releaseNoteManager).createReleaseNote(note);
+        ArgumentCaptor<ReleaseNotesCaller> caller = ArgumentCaptor.captor();
+        verify(this.entryPoint).createReleaseNote(eq(note), caller.capture());
+        assertTrue(caller.getValue().isScripted());
+        assertNull(caller.getValue().getAuthor());
     }
 
     @Test
@@ -281,5 +179,22 @@ class ReleaseNotesScriptServiceTest
 
         assertEquals("XWiki", this.service.getDefaultProduct());
         assertEquals(RELEASE_NOTE, this.service.getDefaultTemplate());
+    }
+
+    /**
+     * The sections a release note displays are the ones the API defines, one per audience, each keeping the query of
+     * the release note.
+     */
+    @Test
+    void theSectionsAreTheOnesOfTheApi()
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setLimit(20);
+
+        List<ReleaseNoteSection> sections = this.service.getSections(query);
+
+        assertEquals(List.of(Audience.USER, Audience.ADMINISTRATOR, Audience.DEVELOPER),
+            sections.stream().map(ReleaseNoteSection::getAudience).toList());
+        assertEquals(20, sections.get(0).getMainChanges().getLimit());
     }
 }
