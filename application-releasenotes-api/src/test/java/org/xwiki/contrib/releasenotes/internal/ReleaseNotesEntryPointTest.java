@@ -74,6 +74,8 @@ class ReleaseNotesEntryPointTest
     private static final DocumentReference ENTRY = new DocumentReference("xwiki",
         List.of("ReleaseNotes", "Data", "XWiki", "8.3", "Entry001"), "WebHome");
 
+    private static final DocumentReference TEMPLATE = new DocumentReference("xwiki", "Sandbox", "Secret");
+
     private static final ReleaseNotesCaller SCRIPT = ReleaseNotesCaller.currentUserAndAuthor(AUTHOR);
 
     private static final ReleaseNotesCaller REQUEST = ReleaseNotesCaller.currentUser();
@@ -265,6 +267,42 @@ class ReleaseNotesEntryPointTest
         assertThrows(ReleaseNotesAccessDeniedException.class, () -> this.entryPoint.createReleaseNote(note, caller));
 
         verify(this.releaseNoteManager, never()).createReleaseNote(any());
+    }
+
+    /**
+     * The content of the template a release note names is copied into the new release note, which its creator can
+     * read: naming a template is reading it, and is checked as a read, for the current user only.
+     */
+    @Test
+    void aReleaseNoteIsNotCreatedFromATemplateTheCurrentUserCannotView() throws Exception
+    {
+        when(this.authorization.hasAccess(Right.VIEW, TEMPLATE)).thenReturn(false);
+        ReleaseNote note = releaseNote();
+        note.setTemplate(TEMPLATE);
+
+        ReleaseNotesAccessDeniedException exception = assertThrows(ReleaseNotesAccessDeniedException.class,
+            () -> this.entryPoint.createReleaseNote(note, SCRIPT));
+
+        assertEquals("The current user is not allowed to view the page [xwiki:Sandbox.Secret].",
+            exception.getMessage());
+        assertEquals(TEMPLATE, exception.getReference());
+        verify(this.releaseNoteManager, never()).createReleaseNote(any());
+        verify(this.authorAuthorization, never()).hasAccess(eq(Right.VIEW), any(), any());
+    }
+
+    /**
+     * A release note that names no template is created from the template configured for the wiki, which an
+     * administrator chose for every user allowed to create a release note, and whose view right is not checked.
+     */
+    @Test
+    void theConfiguredTemplateIsNotChecked() throws Exception
+    {
+        ReleaseNote note = releaseNote();
+
+        this.entryPoint.createReleaseNote(note, REQUEST);
+
+        verify(this.authorization, never()).hasAccess(eq(Right.VIEW), any());
+        verify(this.releaseNoteManager).createReleaseNote(note);
     }
 
     /**

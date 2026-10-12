@@ -77,8 +77,8 @@ public interface ReleaseNotesResource
      *            for the wiki
      * @return {@code 201} with the stored release note and the page it lives in, {@code 400} when the release note
      *         is not usable,
-     *         {@code 401} or {@code 403} when the release note may not be written, or {@code 409} when it already
-     *         exists
+     *         {@code 401} or {@code 403} when the release note may not be written or the template it names may not
+     *         be viewed, or {@code 409} when it already exists
      * @throws ReleaseNotesException when the release note could not be created
      */
     @POST

@@ -88,7 +88,8 @@ public class ReleaseNotesEntryPoint
      * @param note the release note to create
      * @param caller who the release note is created for
      * @return the page the release note was created in
-     * @throws ReleaseNotesAccessDeniedException when the caller may not edit the page of the release note
+     * @throws ReleaseNotesAccessDeniedException when the caller may not edit the page of the release note, or the
+     *             current user may not view the template the release note names
      * @throws ReleaseNotesException when it could not be created, e.g. because it has no version, or no product while
      *             the wiki has no default one
      * @see ReleaseNoteManager#createReleaseNote(ReleaseNote)
@@ -97,6 +98,12 @@ public class ReleaseNotesEntryPoint
         throws ReleaseNotesException
     {
         checkEditRight(note.getProduct(), note.getVersion(), caller);
+        // The content of the template is copied into a page the caller can read, so naming a template is reading it.
+        // The template configured for the wiki, used when the release note names none, is not checked: it is chosen
+        // by an administrator, for every user allowed to create a release note.
+        if (note.getTemplate() != null) {
+            checkViewRight(note.getTemplate());
+        }
 
         return this.releaseNoteManager.createReleaseNote(note);
     }
