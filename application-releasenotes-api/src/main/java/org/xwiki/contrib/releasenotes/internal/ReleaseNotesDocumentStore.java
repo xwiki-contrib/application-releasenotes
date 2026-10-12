@@ -74,8 +74,9 @@ public class ReleaseNotesDocumentStore
     /**
      * Saves the passed page as the current user.
      * <p>
-     * The content author is set along with the author because the content of a release note is copied from a
-     * template that scripts, and the content author is who that script runs as.
+     * The content author is who the scripts in the content of the page run as, so it is set only when that content is
+     * written, e.g. copied from a template: a save that only writes the objects of a page keeps it, rather than make
+     * the current user the author of a script someone else wrote.
      *
      * @param document the page to save
      * @param comment the comment to record the new version of that page with
@@ -89,7 +90,9 @@ public class ReleaseNotesDocumentStore
         DocumentAuthors authors = document.getAuthors();
         authors.setEffectiveMetadataAuthor(user);
         authors.setOriginalMetadataAuthor(user);
-        authors.setContentAuthor(user);
+        if (document.isNew() || document.isContentDirty()) {
+            authors.setContentAuthor(user);
+        }
 
         if (document.isNew()) {
             authors.setCreator(user);

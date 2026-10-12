@@ -37,6 +37,7 @@ import com.xpn.xwiki.test.reference.ReferenceComponentList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
@@ -52,6 +53,8 @@ class ReleaseNotesDocumentStoreTest
         List.of("ReleaseNotes", "Data", "XWiki", "8.3"), "WebHome");
 
     private static final DocumentReference USER = new DocumentReference("xwiki", "XWiki", "User");
+
+    private static final DocumentReference OTHER_USER = new DocumentReference("xwiki", "XWiki", "OtherUser");
 
     @InjectMockComponents
     private ReleaseNotesDocumentStore store;
@@ -83,6 +86,51 @@ class ReleaseNotesDocumentStoreTest
         assertEquals(authors.getEffectiveMetadataAuthor(), authors.getContentAuthor());
         assertEquals(authors.getEffectiveMetadataAuthor(), authors.getCreator());
         assertEquals("New Release note", saved.getComment());
+    }
+
+    /**
+     * The content author is who the scripts in the content of a page run as, so a save that does not write that
+     * content must not move it: otherwise a user who only writes the objects of a page, e.g. to mark a release note
+     * released, would become the author of a script someone else wrote, and run it with their own rights.
+     */
+    @Test
+    void savingAPageWithoutWritingItsContentKeepsItsContentAuthor() throws Exception
+    {
+        XWikiDocument page = page();
+        page.setContent("{{velocity}}$xcontext.user{{/velocity}}");
+        this.store.save(page, "New Release note");
+        DocumentAuthors authorsBefore = load().getAuthors();
+
+        this.oldcore.getXWikiContext().setUserReference(OTHER_USER);
+        XWikiDocument update = load().clone();
+        update.newXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS, this.oldcore.getXWikiContext())
+            .setIntValue("released", 1);
+        this.store.save(update, "Updated release note");
+
+        DocumentAuthors authors = load().getAuthors();
+        assertNotEquals(authorsBefore.getEffectiveMetadataAuthor(), authors.getEffectiveMetadataAuthor(),
+            "Expected the page to have been saved by the other user.");
+        assertEquals(authorsBefore.getContentAuthor(), authors.getContentAuthor(),
+            "A save that does not write the content must keep its content author.");
+    }
+
+    /**
+     * A user who writes the content of a page is its content author, as on any other save.
+     */
+    @Test
+    void savingAPageWritingItsContentRecordsTheCurrentUserAsItsContentAuthor() throws Exception
+    {
+        XWikiDocument page = page();
+        page.setContent("first");
+        this.store.save(page, "New Release note");
+
+        this.oldcore.getXWikiContext().setUserReference(OTHER_USER);
+        XWikiDocument update = load().clone();
+        update.setContent("second");
+        this.store.save(update, "Updated release note");
+
+        DocumentAuthors authors = load().getAuthors();
+        assertEquals(authors.getEffectiveMetadataAuthor(), authors.getContentAuthor());
     }
 
     private XWikiDocument page() throws Exception
