@@ -175,6 +175,30 @@ class DefaultChangeManagerTest
     }
 
     /**
+     * A page named after a number too long to be counted, or too high for the numbers that follow it to be counted,
+     * was named by hand and is left out, rather than make the creation of every new entry fail.
+     */
+    @Test
+    void entryNumbersTooHighToBeFollowedAreNotCounted() throws Exception
+    {
+        existingEntries("Entry002", "Entry99999999999999999999", "Entry" + Integer.MAX_VALUE,
+            "Entry" + (Integer.MAX_VALUE - 9));
+
+        assertEquals(entry("Entry003"), this.manager.reserveNextEntry(PRODUCT, VERSION));
+    }
+
+    /**
+     * The highest number that leaves room for the numbers that follow it is counted.
+     */
+    @Test
+    void theHighestEntryNumberThatCanBeFollowedIsCounted() throws Exception
+    {
+        existingEntries("Entry" + (Integer.MAX_VALUE - 10));
+
+        assertEquals(entry("Entry" + (Integer.MAX_VALUE - 9)), this.manager.reserveNextEntry(PRODUCT, VERSION));
+    }
+
+    /**
      * Only the pages named after an entry are counted, so that the contributors of a release note, which live in a
      * page of their own next to the entries, do not push the numbering along.
      */

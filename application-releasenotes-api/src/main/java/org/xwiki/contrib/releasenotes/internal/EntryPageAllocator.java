@@ -27,6 +27,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.ReleaseNotesException;
 import org.xwiki.model.reference.DocumentReference;
@@ -67,6 +68,13 @@ public class EntryPageAllocator
      * tried.
      */
     private static final int CANDIDATE_COUNT = 10;
+
+    /**
+     * The highest number an entry can have for the numbers of the candidates that follow it to be counted. A page
+     * named after a higher number, or after a number too long to be counted at all, was not numbered here but named by
+     * hand, and is left out: counting it would make the creation of every new entry of the release note fail.
+     */
+    private static final int HIGHEST_ENTRY_NUMBER = Integer.MAX_VALUE - CANDIDATE_COUNT;
 
     @Inject
     private ReleaseNotesDocumentStore documentStore;
@@ -144,7 +152,11 @@ public class EntryPageAllocator
             Matcher matcher = ENTRY_NAME_PATTERN.matcher(entryName);
 
             if (matcher.matches()) {
-                highestNumber = Math.max(highestNumber, Integer.parseInt(matcher.group(1)));
+                int number = NumberUtils.toInt(matcher.group(1), -1);
+
+                if (number <= HIGHEST_ENTRY_NUMBER) {
+                    highestNumber = Math.max(highestNumber, number);
+                }
             }
         }
 
