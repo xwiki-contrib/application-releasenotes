@@ -89,10 +89,8 @@ public class DefaultChangeQueryParser implements ChangeQueryParser
         setContainsScreenshots(parameters, query);
         setExclusions(parameters, query);
 
-        int limit = getNumber(parameters, LIMIT, ChangeQuery.DEFAULT_LIMIT);
-        // A limit is a bound: a value that would remove it, or that would make the search return nothing at all, is
-        // not what a caller asking for a page of changes means.
-        query.setLimit(limit < 1 ? ChangeQuery.DEFAULT_LIMIT : limit);
+        // The query bounds the limit itself, whoever sets it.
+        query.setLimit(getNumber(parameters, LIMIT, ChangeQuery.DEFAULT_LIMIT));
         query.setOffset(Math.max(0, getNumber(parameters, OFFSET, 0)));
 
         return query;

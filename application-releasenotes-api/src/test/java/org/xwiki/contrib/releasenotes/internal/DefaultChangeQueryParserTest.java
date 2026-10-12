@@ -252,6 +252,21 @@ class DefaultChangeQueryParserTest
         assertEquals(expected, parse(ChangeQueryParser.LIMIT, written).getLimit());
     }
 
+    /**
+     * Each change returned costs a document load in the pages displaying them, and a limit can be written by anyone
+     * who can call the REST API, so a limit above the maximum is lowered to it.
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "1000,        1000",
+        "1001,        1000",
+        "2147483647,  1000"
+    })
+    void aLimitAboveTheMaximumIsLoweredToIt(String written, int expected)
+    {
+        assertEquals(expected, parse(ChangeQueryParser.LIMIT, written).getLimit());
+    }
+
     @ParameterizedTest
     @CsvSource({
         "20,          20",

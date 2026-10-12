@@ -49,6 +49,15 @@ public class ChangeQuery
     public static final int DEFAULT_LIMIT = 100;
 
     /**
+     * The most changes a search returns, whatever number the caller asks for: each change returned costs a document
+     * load in the pages displaying them, and a search can be asked for by anyone who can view a page, or call the REST
+     * API.
+     *
+     * @since 2.8
+     */
+    public static final int MAX_LIMIT = 1000;
+
+    /**
      * The filter matching every value of a property, which is what every property of a new query is filtered with.
      */
     private static final ChangeFilter ANY = new ChangeFilter(ChangeFilter.Operator.LIKE, "%");
@@ -225,11 +234,14 @@ public class ChangeQuery
     }
 
     /**
-     * @param limit how many changes the search returns at most
+     * @param limit how many changes the search returns at most, which is lowered to {@link #MAX_LIMIT} when it is
+     *            higher, and replaced by {@link #DEFAULT_LIMIT} when it is lower than 1: a limit is a bound, and a value
+     *            that would remove it, or that would make the search return nothing at all, is not what a caller
+     *            asking for a page of changes means
      */
     public void setLimit(int limit)
     {
-        this.limit = limit;
+        this.limit = limit < 1 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
     }
 
     /**

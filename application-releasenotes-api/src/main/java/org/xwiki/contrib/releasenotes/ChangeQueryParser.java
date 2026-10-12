@@ -98,8 +98,8 @@ public interface ChangeQueryParser
      * all gets none, rather than every change of the wiki.
      * <p>
      * A value that cannot be read as what it filters is ignored rather than reported, since these parameters come
-     * from a URL or from a macro call: an unusable {@code limit} falls back to the default one, and an unusable
-     * {@code containsScreenshots} filters nothing.
+     * from a URL or from a macro call: an unusable {@code limit} falls back to the default one, a {@code limit} above
+     * {@link ChangeQuery#MAX_LIMIT} is lowered to it, and an unusable {@code containsScreenshots} filters nothing.
      *
      * @param parameters the filters and the page to return, keyed by the parameter names of this interface. Values
      *            are read as text, so both a string and the value it stands for are accepted.

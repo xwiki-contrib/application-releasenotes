@@ -73,7 +73,7 @@ public interface ChangesResource
      *            {@code false} to keep only the ones illustrated by neither, and {@code null} to keep both
      * @param aggregated whether to also return the changes of the milestones and of the release candidates of the
      *            version, the way its release note displays them
-     * @param limit how many changes to return at most, 100 by default
+     * @param limit how many changes to return at most, 100 by default and 1000 at the most
      * @param offset how many of the matching changes to leave out before the ones to return
      * @return the changes of that page of the result, and whether more of them matched
      * @throws ReleaseNotesException when the changes could not be looked up
