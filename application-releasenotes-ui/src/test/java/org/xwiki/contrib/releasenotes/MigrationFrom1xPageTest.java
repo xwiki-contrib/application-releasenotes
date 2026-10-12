@@ -103,6 +103,9 @@ class MigrationFrom1xPageTest extends PageTest
         when(this.query.execute()).thenReturn(List.of(CHANGE_PAGE));
         this.componentManager.registerComponent(ScriptService.class, "csrf",
             new CSRFTokenScriptServiceStub(VALID_TOKEN));
+        // A PageTest does not register $services.rendering, which the page escapes the names it lists with.
+        this.componentManager.registerComponent(ScriptService.class, "rendering",
+            new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
         // Everything the conversion needs other than the right being tested is granted, so that a refusal below
         // is the right check refusing and not the conversion failing for an unrelated reason.
         when(this.oldcore.getMockRightService().hasAccessLevel(anyString(), anyString(), anyString(), any()))
@@ -173,6 +176,25 @@ class MigrationFrom1xPageTest extends PageTest
             "An administrator must see the pages the migration would touch, got: " + html.html());
         assertTrue(html.html().contains("confirm=1"),
             "An administrator must be offered the migration, got: " + html.html());
+    }
+
+    /**
+     * The pages listed are named by whoever created them, and their names are emitted into a link that is rendered
+     * as wiki syntax, with the rights of this page's author: a name holding {@code ]]} would otherwise close the
+     * link and have the rest of the name parsed as wiki syntax, in an administrator's session.
+     */
+    @Test
+    void theListedPageNamesAreEscaped() throws Exception
+    {
+        registerSecurity(true);
+        String evilPage = "Sandbox.Evil]]**injected**";
+        when(this.query.execute()).thenReturn(List.of(evilPage));
+
+        Document html = renderHTMLPage(MIGRATION);
+
+        assertTrue(html.select("strong").isEmpty(),
+            "The name of a listed page must not be parsed as wiki syntax, got: " + html.html());
+        assertEquals(List.of(evilPage), html.select("li").eachText());
     }
 
     /**

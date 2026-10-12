@@ -60,6 +60,12 @@
   {{translation key="releasenotes.migration.migrated"/}}
 #end
 #foreach ($item in $services.query.xwql($xwql).execute())
+  ## The page name is chosen by whoever created the page, and it is emitted into both parts of a link, so it is
+  ## escaped: a name holding "]]" would otherwise close the link and have the rest of it parsed as wiki syntax. The
+  ## label is escaped twice, since the link parser removes one level of escaping before it parses the label as wiki
+  ## syntax, while the reference is used as it is once that level is removed.
+  #set ($escapedItem = $services.rendering.escape($item, 'xwiki/2.1'))
+  #set ($escapedItemLabel = $services.rendering.escape($escapedItem, 'xwiki/2.1'))
   #if ($migrate)
     #set ($itemDoc = $xwiki.getDocument($item))
     ## Add a ReleaseNotes.Code.EntryClass
@@ -82,9 +88,9 @@
     #set ($discard = $itemDoc.removeObject($oldChangeObject))
     ## Save the changes
     #set ($discard = $itemDoc.save('Migrated from v1.x format to v2.0', true))
-    * [[$item&gt;&gt;$item]]
+    * [[$escapedItemLabel&gt;&gt;$escapedItem]]
   #else
-    * [[$item&gt;&gt;$item]]
+    * [[$escapedItemLabel&gt;&gt;$escapedItem]]
   #end
 #end
 
