@@ -370,6 +370,28 @@ class ReleaseNotesChangesMacroPageTest extends PageTest
     }
 
     /**
+     * The limit is a macro parameter, so any user who can edit a page can write it, while the macro renders with the
+     * rights of its own author: a limit carrying a double quote must not close a macro parameter and have the rest of
+     * it rendered as wiki syntax of its own, macros included. It is a number or nothing.
+     */
+    @Test
+    void limitIsNotRenderedAsWikiSyntax() throws Exception
+    {
+        when(this.query.execute()).thenReturn(changes(0));
+
+        String limit = "1\" x=\"1\"/}}{{html}}<b>escaped</b>{{/html}}{{getChanges offset=\"0";
+        // Escaped the way the author of the calling page has to write it, so that the macro gets this exact value.
+        String escapedLimit = limit.replace("~", "~~").replace("\"", "~\"").replace("}", "~}");
+        Document html = renderReleaseNote("8.3", "8.3", PRODUCT, String.format("limit=\"%s\"", escapedLimit));
+
+        assertTrue(html.select("b").isEmpty(),
+            "The limit must not close a macro call and have the rest of it rendered as wiki syntax: "
+                + html.body().html());
+        // A limit that is not a number is the default one, plus the row asked for to know whether there are more.
+        verify(this.query, times(2 * AUDIENCE_COUNT)).setLimit(ChangeQuery.DEFAULT_LIMIT + 1);
+    }
+
+    /**
      * A release note only offers its "Add Change" button to an editor while it is not released, so a request to add
      * a change to a released note is one its own pages never send. The button being hidden is not on its own what
      * stops the request from being honoured: the action must be handled under the same condition that shows it.
