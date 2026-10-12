@@ -79,7 +79,11 @@
   #set ($changeSummary = "$changeDoc.display('summary', 'view', $changeObject)")
   #set ($moreDetailsLinkMarkup = '')
   #if ("$!changeObject.getValue('description')" != '')
-    #set ($moreDetailsLinkMarkup = "[[${moreDetailsLabel}&gt;&gt;doc:$changeDoc.documentReference]]")
+    ## The reference is emitted into the target part of a link, so it is escaped like the label: the name of a change
+    ## page is chosen by whoever creates it, and a name holding "]]" would otherwise close the link and have the rest
+    ## of it parsed as wiki syntax.
+    #set ($changeReference = $services.rendering.escape($services.model.serialize($changeDoc.documentReference, 'default'), 'xwiki/2.1'))
+    #set ($moreDetailsLinkMarkup = "[[${moreDetailsLabel}&gt;&gt;doc:$changeReference]]")
   #end
 #end
 #macro(displayScreenshots $changeObject $useGallery $alwaysDisplayScreenshots)

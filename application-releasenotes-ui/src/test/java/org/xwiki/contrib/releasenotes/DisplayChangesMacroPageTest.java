@@ -310,6 +310,28 @@ class DisplayChangesMacroPageTest extends PageTest
     }
 
     /**
+     * The page of a change is named by whoever creates it, and its reference is the target of the link towards it,
+     * which is rendered as wiki syntax: a name holding {@code ]]} would otherwise close the link and have the rest of
+     * the name parsed as wiki syntax, with the rights of the page rendering the list.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = { "simple", "grid", "flow" })
+    void theChangeReferenceIsEscapedInTheLinkTowardsTheChange(String displayer) throws Exception
+    {
+        this.componentManager.registerComponent(ScriptService.class, "rendering",
+            new RenderingScriptServiceStub(RenderingScriptServiceStub.xwikiSyntaxEscaper()));
+
+        DocumentReference change = createChange("Entry001]]**injected**", TITLE, SUMMARY, "The long story");
+
+        Document html = render(String.format("displayer=\"%s\"", displayer), change);
+
+        assertTrue(html.select("strong").isEmpty(), String.format(
+            "The \"%s\" displayer let the name of the change page out of the link: %s", displayer,
+            html.body().html()));
+        assertEquals(List.of(MORE_DETAILS_KEY), html.select("a").eachText());
+    }
+
+    /**
      * The title of a change is optional, and a change that has none is nothing but its summary. Displaying it under
      * a heading holding no text at all gives the release note an empty section, which the table of contents of the
      * release note template then lists as an empty entry.
