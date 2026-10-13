@@ -21,6 +21,7 @@ package org.xwiki.contrib.releasenotes.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,8 @@ import org.xwiki.test.annotation.ComponentList;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
 import org.xwiki.test.junit5.mockito.MockComponent;
 
+import com.xpn.xwiki.XWikiContext;
+import com.xpn.xwiki.XWikiException;
 import com.xpn.xwiki.doc.XWikiDocument;
 import com.xpn.xwiki.objects.BaseObject;
 import com.xpn.xwiki.test.MockitoOldcore;
@@ -59,6 +62,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -221,6 +230,71 @@ class DefaultChangeManagerTest
         this.oldcore.getSpyXWiki().saveDocument(load(entry("Entry001")), this.oldcore.getXWikiContext());
 
         assertEquals(entry("Entry002"), this.manager.reserveNextEntry(PRODUCT, VERSION));
+    }
+
+    /**
+     * Requests loading a page that does not exist at the same time can be handed the same instance, so the page of a
+     * new change is filled in a copy, or two authors adding a change at the same time would fill each other's page.
+     */
+    @Test
+    void theLoadedPageOfANewChangeIsNotWrittenInto() throws Exception
+    {
+        XWikiDocument shared = new XWikiDocument(entry("Entry001"));
+        doReturn(shared).when(this.oldcore.getSpyXWiki()).getDocument(eq(entry("Entry001")), any(XWikiContext.class));
+
+        assertEquals(entry("Entry001"), this.manager.createChange(change()));
+
+        assertTrue(shared.isNew());
+        assertTrue(shared.getXObjects().isEmpty(), "Expected the change to have been written into a copy.");
+    }
+
+    /**
+     * Two authors adding a change at the same time are handed the same number, and the second save fails because the
+     * first one created the page: the second change moves on to the next number rather than fail or overwrite the
+     * first one.
+     */
+    @Test
+    void aChangeWhosePageWasCreatedSinceTheLookupMovesToTheNextNumber() throws Exception
+    {
+        XWikiDocument otherChange = new XWikiDocument(entry("Entry001"));
+        otherChange.setContent("Another author's change");
+        AtomicBoolean raced = new AtomicBoolean();
+        doAnswer(invocation -> {
+            if (!raced.getAndSet(true)) {
+                // The other author saves first, so the store refuses to create the page a second time.
+                this.oldcore.getSpyXWiki().saveDocument(otherChange, "", this.oldcore.getXWikiContext());
+                throw new XWikiException(XWikiException.MODULE_XWIKI_STORE,
+                    XWikiException.ERROR_XWIKI_STORE_HIBERNATE_SAVING_DOC, "Duplicate page");
+            }
+            return invocation.callRealMethod();
+        }).when(this.oldcore.getSpyXWiki()).saveDocument(any(XWikiDocument.class), anyString(),
+            any(XWikiContext.class));
+
+        assertEquals(entry("Entry002"), this.manager.createChange(change()));
+
+        assertEquals("Faster startup", this.manager.getChange(entry("Entry002")).getTitle());
+        assertEquals("Another author's change", load(entry("Entry001")).getContent());
+        assertNull(load(entry("Entry001")).getXObject(ReleaseNotesReferences.ENTRY_CLASS));
+    }
+
+    /**
+     * Only a save that failed because the page was created in the meantime moves on to the next number: any other
+     * failure is reported, rather than retried on every number.
+     */
+    @Test
+    void aSaveFailingOnAPageThatStillDoesNotExistIsReported() throws Exception
+    {
+        doThrow(new XWikiException(XWikiException.MODULE_XWIKI_STORE,
+            XWikiException.ERROR_XWIKI_STORE_HIBERNATE_SAVING_DOC, "Down")).when(this.oldcore.getSpyXWiki())
+            .saveDocument(any(XWikiDocument.class), anyString(), any(XWikiContext.class));
+
+        ReleaseNotesException exception =
+            assertThrows(ReleaseNotesException.class, () -> this.manager.createChange(change()));
+
+        assertEquals(String.format("Failed to save the page [%s].", entry("Entry001")), exception.getMessage());
+        verify(this.oldcore.getSpyXWiki(), times(1)).saveDocument(
+            argThat(document -> document.getDocumentReference().getLastSpaceReference().getName().startsWith("Entry")),
+            anyString(), any(XWikiContext.class));
     }
 
     @Test

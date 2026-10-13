@@ -20,8 +20,11 @@
 package org.xwiki.contrib.releasenotes.internal;
 
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -76,6 +79,18 @@ public class EntryPageAllocator
      */
     private static final int HIGHEST_ENTRY_NUMBER = Integer.MAX_VALUE - CANDIDATE_COUNT;
 
+    /**
+     * How many locks the release notes share. Two release notes sharing a lock only means their entries are not
+     * created at the same time, which costs little, while a lock per release note would never be freed.
+     */
+    private static final int LOCK_COUNT = 64;
+
+    /**
+     * The entries of a release note are created one at a time, so that requests adding an entry to the same release
+     * note at the same time are not all handed the same number and left to retry until some of them give up.
+     */
+    private final Lock[] locks = IntStream.range(0, LOCK_COUNT).mapToObj(i -> new ReentrantLock()).toArray(Lock[]::new);
+
     @Inject
     private ReleaseNotesDocumentStore documentStore;
 
@@ -91,19 +106,79 @@ public class EntryPageAllocator
     private EntityReferenceSerializer<String> localEntityReferenceSerializer;
 
     /**
-     * Gives the page of the next entry of a release note, loaded and not yet saved, so that the caller decides what
-     * that page holds when it is saved.
+     * What the page of a new entry is filled with before it is saved.
+     */
+    @FunctionalInterface
+    public interface EntryPageWriter
+    {
+        /**
+         * @param document the page of the new entry, not yet saved, to write into
+         * @throws ReleaseNotesException when that page could not be filled
+         */
+        void write(XWikiDocument document) throws ReleaseNotesException;
+    }
+
+    /**
+     * Saves the page of the next entry of a release note, as the current user, with what the passed writer fills it
+     * with.
+     * <p>
+     * The entries of a release note are created one at a time on this wiki instance. Two instances of a cluster adding
+     * an entry to the same release note at the same time can still be handed the same number: the first save creates
+     * the page, and the second fails because the page now exists, so that one moves on to the next number and is
+     * filled and saved again, rather than overwrite the first one or fail.
      *
      * @param product the product of the release note to add an entry to
      * @param version the version of the release note to add an entry to, in its long form
-     * @param xcontext the context to load that page with
-     * @return that page, or {@code null} when no page name was free
-     * @throws ReleaseNotesException when the entries the release note already holds could not be looked up
+     * @param writer what fills the page before it is saved
+     * @param comment the comment to record the new page with
+     * @param xcontext the context to resolve the wiki of the release note with
+     * @return the reference of the saved page, or {@code null} when no page name was free
+     * @throws ReleaseNotesException when the entries the release note already holds could not be looked up, or the
+     *     page could not be filled or saved
      */
-    public XWikiDocument takeNextEntryPage(String product, String version, XWikiContext xcontext)
-        throws ReleaseNotesException
+    public DocumentReference saveNextEntryPage(String product, String version, EntryPageWriter writer, String comment,
+        XWikiContext xcontext) throws ReleaseNotesException
     {
         DocumentReference noteReference = ReleaseNotesReferences.releaseNote(xcontext.getWikiId(), product, version);
+        Lock lock = this.locks[Math.floorMod(noteReference.hashCode(), LOCK_COUNT)];
+
+        lock.lock();
+        try {
+            // The lock only covers this wiki instance: in a cluster, another instance can still create a page of the
+            // same name in the meantime, which is what the retry is for.
+            for (int attempt = 0; attempt < CANDIDATE_COUNT; attempt++) {
+                XWikiDocument document = takeNextEntryPage(noteReference);
+
+                if (document == null) {
+                    return null;
+                }
+
+                writer.write(document);
+
+                try {
+                    this.documentStore.save(document, comment);
+
+                    return document.getDocumentReference();
+                } catch (ReleaseNotesException e) {
+                    if (this.documentStore.load(document.getDocumentReference()).isNew()) {
+                        throw e;
+                    }
+                    // Another author created a page of that name since it was looked up, which is why the save
+                    // failed: the next number is tried.
+                }
+            }
+
+            return null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Gives the page of the next entry of a release note, loaded and not yet saved.
+     */
+    private XWikiDocument takeNextEntryPage(DocumentReference noteReference) throws ReleaseNotesException
+    {
         SpaceReference versionSpace = noteReference.getLastSpaceReference();
         int highestNumber = getHighestEntryNumber(versionSpace);
 
@@ -113,7 +188,9 @@ public class EntryPageAllocator
             XWikiDocument document = this.documentStore.load(candidate);
 
             if (document.isNew()) {
-                return document;
+                // Requests loading a page that does not exist at the same time can be handed the same instance, so
+                // what is written into is a copy, or the authors of those requests would fill each other's page.
+                return document.clone();
             }
         }
 

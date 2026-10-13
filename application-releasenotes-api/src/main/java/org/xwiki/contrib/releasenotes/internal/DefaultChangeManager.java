@@ -89,13 +89,20 @@ public class DefaultChangeManager implements ChangeManager
 
         String product = this.productResolver.resolve(change.getProduct());
         XWikiContext xcontext = this.xcontextProvider.get();
-        XWikiDocument document = this.entryPageAllocator.takeNextEntryPage(product, version, xcontext);
+        DocumentReference reference = this.entryPageAllocator.saveNextEntryPage(product, version,
+            document -> fillChangePage(document, change, product, version, xcontext), "New change", xcontext);
 
-        if (document == null) {
+        if (reference == null) {
             throw new ReleaseNotesException(
                 String.format("No page was free for a new change of the version [%s] of [%s].", version, product));
         }
 
+        return reference;
+    }
+
+    private void fillChangePage(XWikiDocument document, Change change, String product, String version,
+        XWikiContext xcontext) throws ReleaseNotesException
+    {
         try {
             // The objects of a change are created by the change template, and not here, so that a template an
             // administrator has customised is what a change is made of, whichever way it was created.
@@ -112,10 +119,6 @@ public class DefaultChangeManager implements ChangeManager
             throw new ReleaseNotesException(
                 String.format("Failed to fill the page [%s] of the new change.", document.getDocumentReference()), e);
         }
-
-        this.documentStore.save(document, "New change");
-
-        return document.getDocumentReference();
     }
 
     @Override
@@ -145,17 +148,9 @@ public class DefaultChangeManager implements ChangeManager
     @Override
     public DocumentReference reserveNextEntry(String product, String version) throws ReleaseNotesException
     {
-        XWikiContext xcontext = this.xcontextProvider.get();
-        XWikiDocument document = this.entryPageAllocator
-            .takeNextEntryPage(this.productResolver.resolve(product), version, xcontext);
-
-        if (document == null) {
-            return null;
-        }
-
-        this.documentStore.save(document, "Take the page of a new release note entry");
-
-        return document.getDocumentReference();
+        // The page is left empty: the editor its author is sent to fills it.
+        return this.entryPageAllocator.saveNextEntryPage(this.productResolver.resolve(product), version,
+            document -> { }, "Take the page of a new release note entry", this.xcontextProvider.get());
     }
 
     @Override

@@ -57,7 +57,8 @@ public class ReleaseNotesDocumentStore
     /**
      * @param reference the page to load
      * @return that page, which is a new page when it does not exist, and is otherwise the instance the store holds in
-     *         its cache, which a caller about to modify it must clone first
+     *         its cache; in both cases it can be handed to other requests loading it at the same time, so a caller
+     *         about to modify it must clone it first
      * @throws ReleaseNotesException when the page could not be loaded
      */
     public XWikiDocument load(DocumentReference reference) throws ReleaseNotesException
