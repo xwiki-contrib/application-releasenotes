@@ -88,8 +88,8 @@ public class ReleaseNotesEntryPoint
      * @param note the release note to create
      * @param caller who the release note is created for
      * @return the page the release note was created in
-     * @throws ReleaseNotesAccessDeniedException when the caller may not edit the page of the release note, or the
-     *             current user may not view the template the release note names
+     * @throws ReleaseNotesAccessDeniedException when the caller may not edit the page of the release note, or may not
+     *             view the template the release note names
      * @throws ReleaseNotesException when it could not be created, e.g. because it has no version, or no product while
      *             the wiki has no default one
      * @see ReleaseNoteManager#createReleaseNote(ReleaseNote)
@@ -98,11 +98,13 @@ public class ReleaseNotesEntryPoint
         throws ReleaseNotesException
     {
         checkEditRight(note.getProduct(), note.getVersion(), caller);
-        // The content of the template is copied into a page the caller can read, so naming a template is reading it.
-        // The template configured for the wiki, used when the release note names none, is not checked: it is chosen
-        // by an administrator, for every user allowed to create a release note.
+        // The content of the template is copied into a page the caller can read, so naming a template is reading it,
+        // for the author of a calling script as much as for the current user: the script names the template, and its
+        // author reads the release note once created. The template configured for the wiki, used when the release
+        // note names none, is not checked: it is chosen by an administrator, for every user allowed to create a
+        // release note.
         if (note.getTemplate() != null) {
-            checkViewRight(note.getTemplate());
+            checkTemplateViewRight(note.getTemplate(), caller);
         }
 
         return this.releaseNoteManager.createReleaseNote(note);
@@ -340,6 +342,19 @@ public class ReleaseNotesEntryPoint
         if (!canView(reference)) {
             throw new ReleaseNotesAccessDeniedException(
                 String.format("The current user is not allowed to view the page [%s].", reference), reference);
+        }
+    }
+
+    private void checkTemplateViewRight(DocumentReference template, ReleaseNotesCaller caller)
+        throws ReleaseNotesAccessDeniedException
+    {
+        checkViewRight(template);
+
+        if (caller.isScripted() && !this.authorAuthorization.hasAccess(Right.VIEW, caller.getAuthor(), template)) {
+            throw new ReleaseNotesAccessDeniedException(
+                String.format("The author [%s] of the calling script is not allowed to view the page [%s].",
+                    caller.getAuthor(), template),
+                template);
         }
     }
 

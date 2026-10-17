@@ -271,7 +271,7 @@ class ReleaseNotesEntryPointTest
 
     /**
      * The content of the template a release note names is copied into the new release note, which its creator can
-     * read: naming a template is reading it, and is checked as a read, for the current user only.
+     * read: naming a template is reading it, and is checked as a read.
      */
     @Test
     void aReleaseNoteIsNotCreatedFromATemplateTheCurrentUserCannotView() throws Exception
@@ -287,7 +287,42 @@ class ReleaseNotesEntryPointTest
             exception.getMessage());
         assertEquals(TEMPLATE, exception.getReference());
         verify(this.releaseNoteManager, never()).createReleaseNote(any());
+    }
+
+    /**
+     * The script that names a template is written by its author, who reads the release note once created: a template
+     * that author cannot view is not copied, even when the current user, who merely runs the script, can view it.
+     */
+    @Test
+    void aReleaseNoteIsNotCreatedFromATemplateTheScriptAuthorCannotView() throws Exception
+    {
+        when(this.authorAuthorization.hasAccess(Right.VIEW, AUTHOR, TEMPLATE)).thenReturn(false);
+        ReleaseNote note = releaseNote();
+        note.setTemplate(TEMPLATE);
+
+        ReleaseNotesAccessDeniedException exception = assertThrows(ReleaseNotesAccessDeniedException.class,
+            () -> this.entryPoint.createReleaseNote(note, SCRIPT));
+
+        assertEquals("The author [xwiki:XWiki.Author] of the calling script is not allowed to view the page "
+            + "[xwiki:Sandbox.Secret].", exception.getMessage());
+        assertEquals(TEMPLATE, exception.getReference());
+        verify(this.releaseNoteManager, never()).createReleaseNote(any());
+    }
+
+    /**
+     * A REST request runs no script, so the template is checked for the current user only.
+     */
+    @Test
+    void aTemplateNamedByARequestIsCheckedForTheCurrentUserOnly() throws Exception
+    {
+        ReleaseNote note = releaseNote();
+        note.setTemplate(TEMPLATE);
+
+        this.entryPoint.createReleaseNote(note, REQUEST);
+
+        verify(this.authorization).hasAccess(Right.VIEW, TEMPLATE);
         verify(this.authorAuthorization, never()).hasAccess(eq(Right.VIEW), any(), any());
+        verify(this.releaseNoteManager).createReleaseNote(note);
     }
 
     /**

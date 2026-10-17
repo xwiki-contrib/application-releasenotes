@@ -93,7 +93,7 @@ public class ReleaseNotesScriptService implements ScriptService
      * @param note the release note to create
      * @return the page the release note was created in
      * @throws ReleaseNotesAccessDeniedException when the current user or the author of the calling script may not
-     *             edit the page, or the current user may not view the template the release note names
+     *             edit the page, or may not view the template the release note names
      * @throws ReleaseNotesException when it could not be created
      * @see ReleaseNoteManager#createReleaseNote(ReleaseNote)
      */
