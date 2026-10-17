@@ -22,9 +22,12 @@ package org.xwiki.contrib.releasenotes.internal;
 import java.util.List;
 import java.util.function.Predicate;
 
+import jakarta.inject.Provider;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.ChangeManager;
 import org.xwiki.contrib.releasenotes.ChangeQuery;
@@ -42,6 +45,7 @@ import org.xwiki.test.junit5.mockito.ComponentTest;
 import org.xwiki.test.junit5.mockito.InjectMockComponents;
 import org.xwiki.test.junit5.mockito.MockComponent;
 
+import com.xpn.xwiki.XWikiContext;
 import com.xpn.xwiki.doc.XWikiDocument;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -70,6 +75,8 @@ class ReleaseNotesEntryPointTest
         List.of("ReleaseNotes", "Data", "XWiki", "8.3"), "WebHome");
 
     private static final DocumentReference AUTHOR = new DocumentReference("xwiki", "XWiki", "Author");
+
+    private static final DocumentReference USER = new DocumentReference("xwiki", "XWiki", "Viewer");
 
     private static final DocumentReference ENTRY = new DocumentReference("xwiki",
         List.of("ReleaseNotes", "Data", "XWiki", "8.3", "Entry001"), "WebHome");
@@ -101,6 +108,11 @@ class ReleaseNotesEntryPointTest
     @MockComponent
     private ReleaseNotesDocumentStore documentStore;
 
+    @MockComponent
+    private Provider<XWikiContext> xcontextProvider;
+
+    private final XWikiContext xcontext = mock();
+
     private final XWikiDocument noteDocument = mock();
 
     @BeforeEach
@@ -111,6 +123,8 @@ class ReleaseNotesEntryPointTest
         when(this.productResolver.resolve(any())).thenReturn("XWiki");
         when(this.releaseNoteManager.getReleaseNoteReference("XWiki", "8.3")).thenReturn(RELEASE_NOTE);
         when(this.documentStore.load(RELEASE_NOTE)).thenReturn(this.noteDocument);
+        when(this.xcontextProvider.get()).thenReturn(this.xcontext);
+        when(this.xcontext.getUserReference()).thenReturn(USER);
     }
 
     @Test
@@ -380,6 +394,80 @@ class ReleaseNotesEntryPointTest
         verify(this.releaseNoteManager).updateReleaseNote(note);
         verify(this.changeManager).createChange(change);
         verify(this.changeManager).reserveNextEntry("XWiki", " ");
+    }
+
+    /**
+     * A change written by a script is saved as the author of that script when that author lacks the programming
+     * right, as the platform saves a page from a script: saved as the current user, who merely views the page the
+     * script is on, a description written by the script would be displayed with the rights of that user.
+     */
+    @Test
+    void aChangeWrittenByAScriptIsSavedAsItsAuthor() throws Exception
+    {
+        when(this.authorAuthorization.hasAccess(Right.PROGRAM, AUTHOR, null)).thenReturn(false);
+        Change change = change();
+
+        this.entryPoint.updateChange(ENTRY, change, SCRIPT);
+
+        InOrder order = inOrder(this.xcontext, this.changeManager);
+        order.verify(this.xcontext).setUserReference(AUTHOR);
+        order.verify(this.changeManager).updateChange(ENTRY, change);
+        order.verify(this.xcontext).setUserReference(USER);
+    }
+
+    /**
+     * A release note created by a script copies the content of its template, which is saved as the author of that
+     * script, the content then running with the rights of that author.
+     */
+    @Test
+    void aReleaseNoteCreatedByAScriptIsSavedAsItsAuthor() throws Exception
+    {
+        when(this.authorAuthorization.hasAccess(Right.PROGRAM, AUTHOR, null)).thenReturn(false);
+        ReleaseNote note = releaseNote();
+
+        this.entryPoint.createReleaseNote(note, SCRIPT);
+
+        InOrder order = inOrder(this.xcontext, this.releaseNoteManager);
+        order.verify(this.xcontext).setUserReference(AUTHOR);
+        order.verify(this.releaseNoteManager).createReleaseNote(note);
+        order.verify(this.xcontext).setUserReference(USER);
+    }
+
+    /**
+     * The current user is given back once the write is made, even when it fails.
+     */
+    @Test
+    void theCurrentUserIsGivenBackWhenAWriteFails() throws Exception
+    {
+        when(this.authorAuthorization.hasAccess(Right.PROGRAM, AUTHOR, null)).thenReturn(false);
+        ReleaseNotesException failure = new ReleaseNotesException("Failed to save the page.");
+        when(this.changeManager.reserveNextEntry("XWiki", "8.3")).thenThrow(failure);
+
+        assertSame(failure, assertThrows(ReleaseNotesException.class,
+            () -> this.entryPoint.reserveNextEntry("XWiki", "8.3", SCRIPT)));
+
+        verify(this.xcontext).setUserReference(USER);
+    }
+
+    /**
+     * A script whose author has the programming right saves as the current user, as the platform does, and a REST
+     * request runs no script: both write as the current user.
+     */
+    @Test
+    void aWriteIsSavedAsTheCurrentUserForAProgrammerOrARequest() throws Exception
+    {
+        when(this.authorAuthorization.hasAccess(eq(Right.PROGRAM), any(), any())).thenReturn(false);
+        Change change = change();
+
+        this.entryPoint.updateChange(ENTRY, change, REQUEST);
+
+        when(this.authorAuthorization.hasAccess(Right.PROGRAM, AUTHOR, null)).thenReturn(true);
+
+        this.entryPoint.createChange(change, SCRIPT);
+
+        verify(this.changeManager).updateChange(ENTRY, change);
+        verify(this.changeManager).createChange(change);
+        verify(this.xcontext, never()).setUserReference(any());
     }
 
     private static ReleaseNote releaseNote()

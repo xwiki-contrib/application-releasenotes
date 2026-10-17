@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +43,8 @@ import org.xwiki.security.authorization.AuthorizationManager;
 import org.xwiki.security.authorization.ContextualAuthorizationManager;
 import org.xwiki.security.authorization.Right;
 
+import com.xpn.xwiki.XWikiContext;
+
 /**
  * Where a call enters the application, whether it comes from a script or from a REST request: it locates the page the
  * call is about, checks that the caller may read or write it, checks that a change is added to a release note that
@@ -57,6 +60,9 @@ import org.xwiki.security.authorization.Right;
  * <li>A write is checked for the current user and, when the caller is a script, for the author of that script too:
  * the script service is reachable with the script right alone, so a check made for the user only would let a script
  * write on behalf of whoever happens to be viewing the page it is on.</li>
+ * <li>A write made by a script is saved as the author of that script, unless that author has the programming right,
+ * as {@code com.xpn.xwiki.api.Document#save} does: saved as the current user, who merely views the page the script is
+ * on, what the script writes would run with the rights of that user.</li>
  * </ul>
  *
  * @version $Id$
@@ -84,6 +90,9 @@ public class ReleaseNotesEntryPoint
     @Inject
     private AuthorizationManager authorAuthorization;
 
+    @Inject
+    private Provider<XWikiContext> xcontextProvider;
+
     /**
      * @param note the release note to create
      * @param caller who the release note is created for
@@ -105,7 +114,7 @@ public class ReleaseNotesEntryPoint
             checkViewRight(note.getTemplate());
         }
 
-        return this.releaseNoteManager.createReleaseNote(note);
+        return write(caller, () -> this.releaseNoteManager.createReleaseNote(note));
     }
 
     /**
@@ -120,7 +129,7 @@ public class ReleaseNotesEntryPoint
     {
         checkEditRight(note.getProduct(), note.getVersion(), caller);
 
-        return this.releaseNoteManager.updateReleaseNote(note);
+        return write(caller, () -> this.releaseNoteManager.updateReleaseNote(note));
     }
 
     /**
@@ -195,7 +204,7 @@ public class ReleaseNotesEntryPoint
             checkReleaseNoteExists(noteReference, product, version);
         }
 
-        return this.changeManager.createChange(change.get());
+        return write(caller, () -> this.changeManager.createChange(change.get()));
     }
 
     /**
@@ -212,7 +221,7 @@ public class ReleaseNotesEntryPoint
     {
         checkEditRight(reference, caller);
 
-        return this.changeManager.updateChange(reference, change);
+        return write(caller, () -> this.changeManager.updateChange(reference, change));
     }
 
     /**
@@ -239,7 +248,7 @@ public class ReleaseNotesEntryPoint
             checkReleaseNoteExists(noteReference, product, version);
         }
 
-        return this.changeManager.reserveNextEntry(product, version);
+        return write(caller, () -> this.changeManager.reserveNextEntry(product, version));
     }
 
     /**
@@ -344,6 +353,35 @@ public class ReleaseNotesEntryPoint
     }
 
     /**
+     * Makes a write, once its rights are checked, as whoever the pages it saves are to be saved as.
+     *
+     * @param caller who the write is made for
+     * @param write the write to make
+     * @return what the write returned
+     * @throws ReleaseNotesException when the write failed
+     */
+    private <T> T write(ReleaseNotesCaller caller, Write<T> write) throws ReleaseNotesException
+    {
+        // The programming right is checked on the main wiki, which is what a null entity stands for.
+        if (!caller.isScripted() || this.authorAuthorization.hasAccess(Right.PROGRAM, caller.getAuthor(), null)) {
+            return write.run();
+        }
+
+        // The pages are saved as the current user, so the author of the script becomes the current user for the time
+        // of the write, as com.xpn.xwiki.api.Document#saveAsAuthor does.
+        XWikiContext xcontext = this.xcontextProvider.get();
+        DocumentReference currentUser = xcontext.getUserReference();
+
+        try {
+            xcontext.setUserReference(caller.getAuthor());
+
+            return write.run();
+        } finally {
+            xcontext.setUserReference(currentUser);
+        }
+    }
+
+    /**
      * @param product the product of the release note the caller asked to write, or {@code null} for the default one
      * @param version the version of that release note, in its long form, or {@code null} when none was given, which
      *            locates no page to check and is refused by the manager itself
@@ -374,5 +412,16 @@ public class ReleaseNotesEntryPoint
                     caller.getAuthor(), reference),
                 reference);
         }
+    }
+
+    /**
+     * A write of the managers, which may fail.
+     *
+     * @param <T> what the write returns
+     */
+    @FunctionalInterface
+    private interface Write<T>
+    {
+        T run() throws ReleaseNotesException;
     }
 }
