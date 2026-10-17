@@ -20,6 +20,8 @@
 package org.xwiki.contrib.releasenotes.internal;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +113,7 @@ public class ChangeSearcher
         throws ReleaseNotesException
     {
         List<String> conditions = new ArrayList<>();
-        Map<String, String> bindings = new LinkedHashMap<>();
+        Map<String, Object> bindings = new LinkedHashMap<>();
 
         // A change is one entry object and one change object of its page, and only the objects numbered 0 are
         // joined, which is where the API, the change template and the 1.x migration put them: joining every entry
@@ -122,7 +124,10 @@ public class ChangeSearcher
         conditions.add(String.format(FIRST_OBJECT_FORMAT, CHANGE_ALIAS));
         addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.PRODUCT, query.getProducts());
         addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.AUDIENCE, query.getAudiences());
-        addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.VERSION, resolveVersions(query.getVersions()));
+        List<ChangeFilter> versionFilters = query.getVersions();
+        addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.VERSION,
+            versionFilters.stream().filter(version -> !version.getOperator().isComparison()).toList(),
+            resolveVersions(versionFilters));
         addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.CATEGORY, query.getCategories());
         addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.IMPORTANCE, query.getImportances());
 
@@ -161,7 +166,7 @@ public class ChangeSearcher
      * it are found: that change tells whether a next page exists without a second, counting query, and it is never
      * part of the result.
      */
-    private ChangeSearchResult executeSearch(String statement, Map<String, String> bindings, ChangeQuery query,
+    private ChangeSearchResult executeSearch(String statement, Map<String, Object> bindings, ChangeQuery query,
         Predicate<DocumentReference> filter) throws ReleaseNotesException
     {
         int batchSize = (int) Math.min(MAX_BATCH_SIZE, (long) query.getOffset() + query.getLimit() + 1);
@@ -197,7 +202,7 @@ public class ChangeSearcher
         }
     }
 
-    private List<String> executeBatch(String statement, Map<String, String> bindings, int limit, int offset)
+    private List<String> executeBatch(String statement, Map<String, Object> bindings, int limit, int offset)
         throws ReleaseNotesException
     {
         try {
@@ -216,8 +221,22 @@ public class ChangeSearcher
      * Turns the filters of one property into the condition matching them, which the query tests as a whole, and into
      * the values that condition compares to.
      */
-    private void addFilters(List<String> conditions, Map<String, String> bindings, String alias, String property,
+    private void addFilters(List<String> conditions, Map<String, Object> bindings, String alias, String property,
         List<ChangeFilter> filters)
+    {
+        addFilters(conditions, bindings, alias, property, filters, List.of());
+    }
+
+    /**
+     * Turns the filters of one property, and the values it may be equal to on top of them, into the condition
+     * matching them.
+     * <p>
+     * The values are tested by a single {@code in} condition rather than by one condition each: however many there
+     * are, the statement keeps the same depth, whereas a long chain of {@code or} is compiled recursively and a few
+     * thousand of them exhaust the stack of the query compiler.
+     */
+    private void addFilters(List<String> conditions, Map<String, Object> bindings, String alias, String property,
+        List<ChangeFilter> filters, Collection<String> values)
     {
         List<String> filterConditions = new ArrayList<>();
         int index = 0;
@@ -230,6 +249,12 @@ public class ChangeSearcher
             bindings.put(parameter, filter.getValue());
         }
 
+        if (!values.isEmpty()) {
+            String parameter = property + "List";
+            filterConditions.add(String.format("%s.%s in (:%s)", alias, property, parameter));
+            bindings.put(parameter, new ArrayList<>(values));
+        }
+
         if (filterConditions.isEmpty()) {
             filterConditions.add(MATCHES_NOTHING);
         }
@@ -238,39 +263,43 @@ public class ChangeSearcher
     }
 
     /**
-     * Replaces every version filter comparing versions by the list of the existing versions it matches, so that the
-     * query itself only ever tests a version for equality.
+     * Resolves the version filters comparing versions into the existing versions they match, so that the query itself
+     * only ever tests a version for equality.
      * <p>
      * The comparison cannot be left to the database: the version of an entry is stored in a string column, so
      * {@code >=9.0} would leave 10.0 out and the outcome would depend on the collation of the database on top of
      * that. It is made here with the extension version scheme, which knows that 9.0 comes before 10.0 and that the
      * milestones and the release candidates of a version come before that version.
+     * <p>
+     * Each existing version is kept once, however many comparisons match it: the filters are alternatives, so a
+     * version matched twice is no more matched than a version matched once.
      *
      * @param versions the version filters a caller asked for
-     * @return those filters, with the ones comparing versions resolved
+     * @return the existing versions matched by the filters comparing versions, in the order the wiki gave them
      */
-    private List<ChangeFilter> resolveVersions(List<ChangeFilter> versions) throws ReleaseNotesException
+    private Set<String> resolveVersions(List<ChangeFilter> versions) throws ReleaseNotesException
     {
-        if (versions.stream().noneMatch(filter -> filter.getOperator().isComparison())) {
-            return versions;
+        List<ChangeFilter> comparisons =
+            versions.stream().filter(filter -> filter.getOperator().isComparison()).toList();
+        Set<String> resolved = new LinkedHashSet<>();
+
+        if (comparisons.isEmpty()) {
+            return resolved;
         }
 
-        List<String> existingVersions = getExistingVersions();
-        List<ChangeFilter> resolved = new ArrayList<>();
+        Map<String, Version> existingVersions = new LinkedHashMap<>();
+        for (String existingVersion : getExistingVersions()) {
+            existingVersions.put(existingVersion, new DefaultVersion(existingVersion));
+        }
 
-        for (ChangeFilter filter : versions) {
-            if (!filter.getOperator().isComparison()) {
-                resolved.add(filter);
-                continue;
-            }
-
+        for (ChangeFilter filter : comparisons) {
             Version bound = new DefaultVersion(filter.getValue());
 
-            for (String existingVersion : existingVersions) {
-                if (matches(new DefaultVersion(existingVersion).compareTo(bound), filter.getOperator())) {
-                    resolved.add(new ChangeFilter(ChangeFilter.Operator.EQUALS, existingVersion));
+            existingVersions.forEach((name, version) -> {
+                if (matches(version.compareTo(bound), filter.getOperator())) {
+                    resolved.add(name);
                 }
-            }
+            });
         }
 
         return resolved;

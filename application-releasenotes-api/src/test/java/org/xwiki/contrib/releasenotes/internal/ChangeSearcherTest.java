@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -141,8 +142,7 @@ class ChangeSearcherTest
         verify(this.queryManager).createQuery(EXISTING_VERSIONS_STATEMENT, Query.XWQL);
         // The comparison is resolved into the existing versions it matches, so the search itself only tests
         // equality, and 10.0 is one of them since it comes after 9.0 as a version.
-        verify(this.query).bindValue("version1", "9.0");
-        verify(this.query).bindValue("version2", "10.0");
+        verify(this.query).bindValue("versionList", List.of("9.0", "10.0"));
     }
 
     /**
@@ -163,13 +163,7 @@ class ChangeSearcherTest
 
         this.searcher.search(versionQuery(new ChangeFilter(operator, "9.0")), this.filter);
 
-        String[] versions = expectedVersions.split(",");
-
-        for (int index = 0; index < versions.length; index++) {
-            verify(this.query).bindValue("version" + (index + 1), versions[index]);
-        }
-
-        verify(this.query, never()).bindValue("version" + (versions.length + 1), null);
+        verify(this.query).bindValue("versionList", Arrays.asList(expectedVersions.split(",")));
     }
 
     /**
@@ -231,8 +225,58 @@ class ChangeSearcherTest
 
         this.searcher.search(versionQuery(new ChangeFilter(Operator.GTE, "1.0")), this.filter);
 
-        verify(this.query).bindValue("version1", "9.0");
-        verify(this.query, never()).bindValue("version2", "");
+        verify(this.query).bindValue("versionList", List.of("9.0"));
+    }
+
+    /**
+     * The existing versions the comparisons match are tested by a single condition, each of them once, however many
+     * comparisons match it: one condition per comparison and per version would make a statement whose depth grows with
+     * their product, and a few thousand of them exhaust the stack of the query compiler.
+     */
+    @Test
+    void theVersionsManyComparisonsMatchAreTestedOnceByASingleCondition() throws Exception
+    {
+        List<String> existingVersions = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) {
+            existingVersions.add("7." + i);
+        }
+        doReturn(existingVersions).when(this.existingVersionsQuery).execute();
+        List<ChangeFilter> comparisons = new ArrayList<>();
+        for (int i = 0; i < 250; i++) {
+            comparisons.add(new ChangeFilter(Operator.GTE, "0"));
+        }
+        ChangeQuery query = new ChangeQuery();
+        query.setVersions(comparisons);
+
+        this.searcher.search(query, this.filter);
+
+        ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
+        // The existing versions are read first, then the changes.
+        verify(this.queryManager, times(2)).createQuery(statement.capture(), eq(Query.XWQL));
+        assertTrue(statement.getValue().contains(" and (entries.version in (:versionList)) "), statement.getValue());
+        verify(this.query).bindValue("versionList", existingVersions);
+    }
+
+    /**
+     * A version filter that does not compare versions is tested by the database as it is, as an alternative to the
+     * existing versions the comparisons match.
+     */
+    @Test
+    void aPatternAndAComparisonAreAlternatives() throws Exception
+    {
+        doReturn(Arrays.asList("8.3", "9.0", "10.0")).when(this.existingVersionsQuery).execute();
+        ChangeQuery query = new ChangeQuery();
+        query.setVersions(List.of(new ChangeFilter(Operator.LIKE, "8.%"), new ChangeFilter(Operator.GTE, "9.0")));
+
+        this.searcher.search(query, this.filter);
+
+        ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
+        // The existing versions are read first, then the changes.
+        verify(this.queryManager, times(2)).createQuery(statement.capture(), eq(Query.XWQL));
+        assertTrue(statement.getValue()
+            .contains("(entries.version like :version1 or entries.version in (:versionList))"), statement.getValue());
+        verify(this.query).bindValue("version1", "8.%");
+        verify(this.query).bindValue("versionList", List.of("9.0", "10.0"));
     }
 
     /**

@@ -20,6 +20,7 @@
 package org.xwiki.contrib.releasenotes;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -169,17 +170,18 @@ class GetChangesMacroPageTest extends PageTest
     }
 
     /**
-     * Since a comparison filter is resolved into exact versions, it is tested with an {@code =}, and the resulting
-     * clauses are combined with an {@code or} together with the items that are not comparisons.
+     * Since a comparison filter is resolved into exact versions, they are tested with a single {@code in}, combined
+     * with an {@code or} together with the items that are not comparisons.
      */
     @Test
     void versionFilterWithSeveralItems() throws Exception
     {
         renderGetChanges(">=10.0,8.3%");
 
-        assertTrue(mainStatement().contains("(entries.version = :version1 or entries.version like :version2)"),
-            "Expected one clause per resolved filter item, got: " + mainStatement());
-        assertEquals(List.of("10.0", "8.3%"), boundVersions());
+        assertTrue(mainStatement().contains("(entries.version like :version1 or entries.version in (:versionList))"),
+            "Expected a clause per item that is not a comparison and one for the resolved versions, got: "
+                + mainStatement());
+        assertEquals(List.of("8.3%", "10.0"), boundVersions());
     }
 
     /**
@@ -212,7 +214,7 @@ class GetChangesMacroPageTest extends PageTest
 
     /**
      * @return the values bound to the {@code version} parameters of the query looking for the changes, in binding
-     *         order
+     *         order, the versions of a list being listed one by one
      */
     private List<String> boundVersions()
     {
@@ -222,7 +224,12 @@ class GetChangesMacroPageTest extends PageTest
         List<String> versions = new ArrayList<>();
         for (int i = 0; i < names.getAllValues().size(); i++) {
             if (names.getAllValues().get(i).startsWith("version")) {
-                versions.add((String) values.getAllValues().get(i));
+                Object value = values.getAllValues().get(i);
+                if (value instanceof Collection<?> list) {
+                    list.forEach(version -> versions.add((String) version));
+                } else {
+                    versions.add((String) value);
+                }
             }
         }
         return versions;
