@@ -325,7 +325,8 @@ class GetChangesMacroPageTest extends PageTest
 
         assertEquals("from doc.object(ReleaseNotes.Code.EntryClass) as entries, "
             + "doc.object(ReleaseNotes.Code.Change.ChangeClass) as changes where "
-            + "(entries.product like :product1) "
+            + "entries.number = 0 and changes.number = 0 "
+            + "and (entries.product like :product1) "
             + "and (changes.audience like :audience1) "
             + "and (entries.version like :version1) "
             + "and (changes.category like :category1) "

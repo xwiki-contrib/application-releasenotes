@@ -79,6 +79,17 @@ public class ChangeSearcher
      */
     private static final String MATCHES_NOTHING = "1 = 0";
 
+    /**
+     * The condition keeping, of the objects of one class a page holds, only the one numbered 0.
+     */
+    private static final String FIRST_OBJECT_FORMAT = "%s.number = 0";
+
+    /**
+     * The most rows read from the database at once. A page of changes and the change beyond it fit in one batch
+     * when nothing is skipped; the rows an offset skips are read in as many batches as they take.
+     */
+    private static final int MAX_BATCH_SIZE = ChangeQuery.MAX_LIMIT + 1;
+
     @Inject
     private QueryManager queryManager;
 
@@ -102,6 +113,13 @@ public class ChangeSearcher
         List<String> conditions = new ArrayList<>();
         Map<String, String> bindings = new LinkedHashMap<>();
 
+        // A change is one entry object and one change object of its page, and only the objects numbered 0 are
+        // joined, which is where the API, the change template and the 1.x migration put them: joining every entry
+        // object of a page with every change object of it would match a page holding several of each once per pair
+        // of objects. The number is compared to a constant so that the database leaves the other objects out
+        // before it joins them.
+        conditions.add(String.format(FIRST_OBJECT_FORMAT, ENTRY_ALIAS));
+        conditions.add(String.format(FIRST_OBJECT_FORMAT, CHANGE_ALIAS));
         addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.PRODUCT, query.getProducts());
         addFilters(conditions, bindings, CHANGE_ALIAS, ChangeXObjects.AUDIENCE, query.getAudiences());
         addFilters(conditions, bindings, ENTRY_ALIAS, ChangeXObjects.VERSION, resolveVersions(query.getVersions()));
@@ -146,7 +164,7 @@ public class ChangeSearcher
     private ChangeSearchResult executeSearch(String statement, Map<String, String> bindings, ChangeQuery query,
         Predicate<DocumentReference> filter) throws ReleaseNotesException
     {
-        int batchSize = (int) Math.min(Integer.MAX_VALUE, (long) query.getOffset() + query.getLimit() + 1);
+        int batchSize = (int) Math.min(MAX_BATCH_SIZE, (long) query.getOffset() + query.getLimit() + 1);
         int skipped = 0;
         // The page is a list of its own rather than a view of the rows, so that the caller may modify the list it is
         // given: the getChanges macro publishes it to wiki pages, which may take changes out of it on their own.

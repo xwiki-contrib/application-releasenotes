@@ -19,6 +19,7 @@
  */
 package org.xwiki.contrib.releasenotes.internal;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +59,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -315,6 +317,49 @@ class ChangeSearcherTest
         assertEquals(List.of("visible2"), result.getChangeNames());
         assertEquals(List.of(new DocumentReference("xwiki", "Space", "visible2")), result.getChanges());
         assertTrue(result.hasMore());
+    }
+
+    /**
+     * The rows an offset skips are read in batches no larger than a full page and the change beyond it, rather than
+     * in one batch as large as the offset.
+     */
+    @Test
+    void theRowsAnOffsetSkipsAreReadInBoundedBatches() throws Exception
+    {
+        List<String> fullBatch = new ArrayList<>();
+        for (int i = 0; i < ChangeQuery.MAX_LIMIT + 1; i++) {
+            fullBatch.add("change" + i);
+        }
+        doReturn(fullBatch, List.of("last")).when(this.query).execute();
+
+        ChangeQuery changeQuery = new ChangeQuery();
+        changeQuery.setLimit(1);
+        changeQuery.setOffset(Integer.MAX_VALUE - 1);
+        ChangeSearchResult result = this.searcher.search(changeQuery, this.filter);
+
+        verify(this.query, times(2)).setLimit(ChangeQuery.MAX_LIMIT + 1);
+        verify(this.query).setOffset(0);
+        verify(this.query).setOffset(ChangeQuery.MAX_LIMIT + 1);
+        assertEquals(List.of(), result.getChangeNames());
+        assertFalse(result.hasMore());
+    }
+
+    /**
+     * A change is one entry object and one change object of its page: a page holding several objects of each class
+     * is matched once, through the objects numbered 0, rather than once per pair of objects.
+     */
+    @Test
+    void onlyTheObjectsNumberedZeroOfAPageAreJoined() throws Exception
+    {
+        ChangeQuery query = new ChangeQuery();
+        query.setProducts(List.of(new ChangeFilter(Operator.EQUALS, "XWiki")));
+
+        this.searcher.search(query, this.filter);
+
+        ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
+        verify(this.queryManager).createQuery(statement.capture(), anyString());
+        assertTrue(statement.getValue().contains("where entries.number = 0 and changes.number = 0 and "),
+            statement.getValue());
     }
 
     /**
