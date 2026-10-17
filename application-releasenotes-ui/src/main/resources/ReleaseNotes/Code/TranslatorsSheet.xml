@@ -1,0 +1,131 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.6" reference="ReleaseNotes.Code.TranslatorsSheet" locale="">
+  <web>ReleaseNotes.Code</web>
+  <name>TranslatorsSheet</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>ReleaseNotes.Code.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>Translators List Sheet</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <enforceRequiredRights>true</enforceRequiredRights>
+  <content>{{include reference="ReleaseNotes.Code.EntryVelocityMacros"/}}
+
+{{velocity}}
+#set ($entryObject = $doc.getObject("ReleaseNotes.Code.EntryClass"))
+## A release note can have several translated languages: one TranslatorsClass object per language.
+#set ($languageObjects = $doc.getObjects("ReleaseNotes.Code.TranslatorsClass"))
+#if ($xcontext.action == 'edit')
+  #if ("$!request.product" != '')
+    #set ($discard = $entryObject.set('product', $!request.product))
+  #end
+  #if ("$!request.version" != '')
+    #set ($discard = $entryObject.set('version', $!request.version))
+  #end
+  #if ("$!request.type" != '')
+    #set ($discard = $entryObject.set('type', $!request.type))
+  #end
+  ## The entry fields are not edited here, but they must still be submitted: on save the page is rebuilt from the
+  ## template and the submitted fields only, so values taken from the request above would be lost otherwise.
+  $doc.display('product', 'hidden', $entryObject)
+  $doc.display('version', 'hidden', $entryObject)
+  $doc.display('type', 'hidden', $entryObject)
+  (% class='xform col-xs-12' %)(((
+  #foreach ($languageObject in $languageObjects)
+    #displayEntryField($languageObject, 'language', '')
+  #end
+  )))
+#else
+## Sort the language names alphabetically, ignoring case, before rendering them.
+#set ($sortedLanguages = [])
+#foreach ($languageObject in $languageObjects)
+#set ($name = "$!languageObject.getValue('language')")
+#set ($name = $name.trim())
+#if ($name != '')
+#set ($index = $sortedLanguages.size())
+#foreach ($existing in $sortedLanguages)
+#if ($name.compareToIgnoreCase($existing) &lt; 0)
+#set ($index = $foreach.index)
+#break
+#end
+#end
+#set ($discard = $sortedLanguages.add($index, $name))
+#end
+#end
+#if ($sortedLanguages.isEmpty())
+{{warning}}{{translation key="releasenotes.translators.notGenerated"/}}{{/warning}}
+#else
+{{translation key="releasenotes.translators.intro"/}}
+
+#foreach ($language in $sortedLanguages)
+* $services.rendering.escape($language, 'xwiki/2.1')
+#end
+#end
+#end
+{{/velocity}}</content>
+  <object>
+    <name>ReleaseNotes.Code.TranslatorsSheet</name>
+    <number>0</number>
+    <className>XWiki.RequiredRightClass</className>
+    <guid>16baeb92-d42c-483f-b2f1-d87cc1503993</guid>
+    <class>
+      <name>XWiki.RequiredRightClass</name>
+      <customClass/>
+      <customMapping/>
+      <defaultViewSheet/>
+      <defaultEditSheet/>
+      <defaultWeb/>
+      <nameField/>
+      <validationScript/>
+      <level>
+        <cache>0</cache>
+        <disabled>0</disabled>
+        <displayType>select</displayType>
+        <freeText>forbidden</freeText>
+        <largeStorage>0</largeStorage>
+        <multiSelect>0</multiSelect>
+        <name>level</name>
+        <number>1</number>
+        <prettyName>Level</prettyName>
+        <relationalStorage>0</relationalStorage>
+        <separator> </separator>
+        <separators> ,|</separators>
+        <size>1</size>
+        <unmodifiable>0</unmodifiable>
+        <values>edit|script|wiki_admin|programming</values>
+        <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+      </level>
+    </class>
+    <property>
+      <level>script</level>
+    </property>
+  </object>
+</xwikidoc>
