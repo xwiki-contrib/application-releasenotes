@@ -148,8 +148,16 @@ public class DefaultChangeManager implements ChangeManager
     @Override
     public DocumentReference reserveNextEntry(String product, String version) throws ReleaseNotesException
     {
+        // The version is trimmed, as when a change is created, which is also how the release note the entry belongs
+        // to is located: an entry taken under the untrimmed version would belong to no release note.
+        String trimmedVersion = StringUtils.trimToNull(version);
+
+        if (trimmedVersion == null) {
+            throw new ReleaseNotesException("An entry needs the version of the release note it belongs to.");
+        }
+
         // The page is left empty: the editor its author is sent to fills it.
-        return this.entryPageAllocator.saveNextEntryPage(this.productResolver.resolve(product), version,
+        return this.entryPageAllocator.saveNextEntryPage(this.productResolver.resolve(product), trimmedVersion,
             document -> { }, "Take the page of a new release note entry", this.xcontextProvider.get());
     }
 

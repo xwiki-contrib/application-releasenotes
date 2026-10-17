@@ -90,9 +90,10 @@ public interface ChangeManager
      * page without content, so the objects of the change are created there, once.
      *
      * @param product the product of the release note to add an entry to
-     * @param version the version of the release note to add an entry to, in its long form
+     * @param version the version of the release note to add an entry to, in its long form, which is trimmed
      * @return the page that was taken, or {@code null} when no page name was free
-     * @throws ReleaseNotesException when the existing entries could not be looked up, or the save failed
+     * @throws ReleaseNotesException when the version is blank, the existing entries could not be looked up, or the
+     *             save failed
      */
     DocumentReference reserveNextEntry(String product, String version) throws ReleaseNotesException;
 

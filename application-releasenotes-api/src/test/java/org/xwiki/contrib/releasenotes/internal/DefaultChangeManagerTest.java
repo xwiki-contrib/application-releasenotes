@@ -67,6 +67,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -140,6 +141,29 @@ class DefaultChangeManagerTest
     {
         assertEquals(entry("Entry001"), this.manager.reserveNextEntry(PRODUCT, VERSION));
         assertFalse(load(entry("Entry001")).isNew(), "Expected the page of the new entry to have been taken.");
+    }
+
+    /**
+     * The version is trimmed, as when a change is created and as when the release note of the entry is located, so
+     * that the entry is taken under that release note and not under a version space of its own.
+     */
+    @Test
+    void anEntryIsTakenUnderTheTrimmedVersion() throws Exception
+    {
+        assertEquals(entry("Entry001"), this.manager.reserveNextEntry(PRODUCT, " " + VERSION + " "));
+    }
+
+    /**
+     * A blank version locates no release note, and no entry is taken for it.
+     */
+    @Test
+    void noEntryIsTakenForABlankVersion() throws Exception
+    {
+        ReleaseNotesException exception =
+            assertThrows(ReleaseNotesException.class, () -> this.manager.reserveNextEntry(PRODUCT, " "));
+
+        assertEquals("An entry needs the version of the release note it belongs to.", exception.getMessage());
+        verify(this.queryManager, never()).createQuery(anyString(), anyString());
     }
 
     /**
