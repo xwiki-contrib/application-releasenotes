@@ -82,7 +82,7 @@ class RequiredRightsTest extends PageTest
     static {
         // Registering a wiki-visible macro, contributing a wiki-scoped UI extension and declaring a wiki-scoped
         // translation bundle are wiki-administration-level acts in themselves, performed with the document author's
-        // rights — this is not about the script those pages carry. For the five macro pages the required-rights
+        // rights — this is not about the script those pages carry. For the six macro pages the required-rights
         // analyzer only reports script, because it looks at the macro body and not at what registering the macro
         // costs; capping the author at script leaves the macro unregistered and every page using it renders
         // "Unknown macro".
@@ -91,6 +91,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/Change/ReleaseNotesChangesMacro", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/HTML5Video", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ReleaseNotesContributorsMacro", WIKI_ADMIN);
+        EXPECTED_RIGHTS.put("Code/ReleaseNoteValidationMacro", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ApplicationsPanelEntry", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/Translations", WIKI_ADMIN);
         // The analyzer computes script for the migration, seeing only a Velocity macro. It stays at wiki_admin: the

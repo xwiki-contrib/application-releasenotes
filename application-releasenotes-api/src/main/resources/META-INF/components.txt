@@ -8,5 +8,6 @@ org.xwiki.contrib.releasenotes.internal.ProductResolver
 org.xwiki.contrib.releasenotes.internal.ReleaseNotesDocumentStore
 org.xwiki.contrib.releasenotes.internal.ReleaseNotesEntryPoint
 org.xwiki.contrib.releasenotes.internal.converter.ChangeConverter
+org.xwiki.contrib.releasenotes.internal.converter.QAValidationConverter
 org.xwiki.contrib.releasenotes.internal.converter.ReleaseNoteConverter
 org.xwiki.contrib.releasenotes.script.ReleaseNotesScriptService

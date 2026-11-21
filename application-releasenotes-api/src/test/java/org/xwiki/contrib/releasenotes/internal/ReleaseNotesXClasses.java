@@ -54,6 +54,9 @@ final class ReleaseNotesXClasses
         // release note is created with stays empty.
         releaseNoteClass.addDateField("date", "Release Date", "dd/MM/yyyy", 0);
         releaseNoteClass.addBooleanField("released", "Released", "yesno");
+        releaseNoteClass.addStaticListField("qaValidation", "Manual QA Validation",
+            "notTested=Not tested|validated=Validated|notValidated=Not validated");
+        releaseNoteClass.addDateField("qaValidationDate", "Manual QA Validation Date", "dd/MM/yyyy", 0);
         saveClass(oldcore, releaseNoteClass);
 
         BaseClass entryClass = createClass(oldcore, ReleaseNotesReferences.ENTRY_CLASS);

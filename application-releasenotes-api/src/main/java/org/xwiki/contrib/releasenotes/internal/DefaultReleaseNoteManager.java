@@ -66,10 +66,6 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
 
     private static final String VERSION = "version";
 
-    private static final String DATE = "date";
-
-    private static final String RELEASED = "released";
-
     private static final String LEVEL = "level";
 
     /**
@@ -143,7 +139,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
             BaseObject object = document.newXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS, xcontext);
             object.set(PRODUCT, product, xcontext);
             object.set(VERSION, version, xcontext);
-            setReleaseState(object, note, xcontext);
+            ReleaseNoteXObjects.writeState(object, note, xcontext);
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to fill the page [%s] of the new release note.", reference), e);
@@ -177,9 +173,9 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
         }
 
         try {
-            // Both properties are written, and not only the ones the passed release note carries: this replaces the
-            // release note, so a date the caller left out is emptied rather than kept.
-            setReleaseState(object, note, xcontext);
+            // All the state properties are written, and not only the ones the passed release note carries: this
+            // replaces the release note, so a date or a validation the caller left out is emptied rather than kept.
+            ReleaseNoteXObjects.writeState(object, note, xcontext);
         } catch (XWikiException e) {
             throw new ReleaseNotesException(
                 String.format("Failed to write the release note of the page [%s].", reference), e);
@@ -187,7 +183,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
 
         this.documentStore.save(document, "Updated release note");
 
-        return toReleaseNote(object);
+        return ReleaseNoteXObjects.read(object);
     }
 
     @Override
@@ -205,7 +201,7 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
             throw new ReleaseNotesNotFoundException(String.format(NO_RELEASE_NOTE, reference), reference);
         }
 
-        return toReleaseNote(object);
+        return ReleaseNoteXObjects.read(object);
     }
 
     @Override
@@ -272,43 +268,6 @@ public class DefaultReleaseNoteManager implements ReleaseNoteManager
         // A final version also displays the changes of its milestones and of its release candidates, which are
         // matched by pattern since their numbers are not known here.
         return List.of(shortVersion, shortVersion + "-milestone%", shortVersion + "-rc%");
-    }
-
-    /**
-     * Writes the two properties of a release note that change over its life: the day the version is released, and
-     * whether it has been.
-     *
-     * @param object the release note object to write them to
-     * @param note the release note holding them
-     * @param xcontext the context to write them with
-     * @throws XWikiException when they could not be written
-     */
-    private void setReleaseState(BaseObject object, ReleaseNote note, XWikiContext xcontext) throws XWikiException
-    {
-        object.set(RELEASED, note.isReleased() ? "1" : "0", xcontext);
-
-        if (note.getDate() == null) {
-            // An empty release date, and not no release date at all: the Live Data listing the release notes sorts
-            // them on their date and leaves out the ones that have no value for it.
-            object.set(DATE, "", xcontext);
-        } else {
-            object.set(DATE, note.getDate(), xcontext);
-        }
-    }
-
-    /**
-     * @param object the release note object of a page
-     * @return the release note that object holds
-     */
-    private ReleaseNote toReleaseNote(BaseObject object)
-    {
-        ReleaseNote note = new ReleaseNote();
-        note.setProduct(object.getStringValue(PRODUCT));
-        note.setVersion(object.getStringValue(VERSION));
-        note.setDate(object.getDateValue(DATE));
-        note.setReleased(object.getIntValue(RELEASED) == 1);
-
-        return note;
     }
 
     /**

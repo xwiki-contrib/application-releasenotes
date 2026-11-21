@@ -69,6 +69,13 @@ ReleaseNotes.Code.ReleaseNoteClass_product=Product
 ReleaseNotes.Code.ReleaseNoteClass_version=Version
 ReleaseNotes.Code.ReleaseNoteClass_released=Is Released?
 ReleaseNotes.Code.ReleaseNoteClass_date=Release Date
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation=Manual QA Validation
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation.hint=Whether Manual QA ran its test plan on this version and found no blockers (Validated) or found some (Not validated). Switch a validated version to Not validated when a blocker found later makes it unfit to use.
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_notTested=Not tested
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_validated=Validated
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_notValidated=Not validated
+ReleaseNotes.Code.ReleaseNoteClass_qaValidationDate=Manual QA Validation Date
+ReleaseNotes.Code.ReleaseNoteClass_qaValidationDate.hint=The day Manual QA finished testing this version.
 ReleaseNotes.Code.ContributorsClass_contributors=Contributors
 ReleaseNotes.Code.ContributorsClass_contributors.hint=One contributor name per line.
 ReleaseNotes.Code.ReleaseNotesConfigClass_product=Default Product Name
@@ -104,6 +111,16 @@ releasenotes.releases.add.failed=The release note could not be created. Please c
 # afterwards.
 
 releasenotes.releasenote.title=Release Notes for {0} {1}
+
+# Manual QA validation badge, displayed by the releasenotevalidation macro. The tooltips are also read out to screen
+# reader users, in place of the badge.
+
+releasenotes.qaValidation.label=Manual QA
+releasenotes.qaValidation.validated=Validated
+releasenotes.qaValidation.notValidated=Not validated
+releasenotes.qaValidation.validated.tooltip=Manual QA ran its test plan on this version and found no blockers. It is not a promise that the version has no bugs.
+releasenotes.qaValidation.validated.dateTooltip=Manual QA ran its test plan on this version on {0} and found no blockers. It is not a promise that the version has no bugs.
+releasenotes.qaValidation.notValidated.tooltip=Manual QA found blockers in this version, while testing it or later.
 
 # Release notes Live Data, on the application home page
 
