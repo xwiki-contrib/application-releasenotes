@@ -84,6 +84,32 @@ public class ReleaseNotesAdministrationSectionPage extends AdministrationSection
     }
 
     /**
+     * @return {@code true} if the option displaying the Manual QA validation badge on the release notes is ticked
+     */
+    public boolean isQAValidationDisplayed()
+    {
+        return getDriver().findElementWithoutWaiting(By.cssSelector(
+            String.format("input[type='checkbox'][name='%s_0_displayQAValidation']", CONFIGURATION_CLASS)))
+            .isSelected();
+    }
+
+    /**
+     * Ticks or unticks the option displaying the Manual QA validation badge on the release notes, and saves the
+     * section.
+     *
+     * @param displayed whether the badge is to be displayed
+     */
+    public void setQAValidationDisplayed(boolean displayed)
+    {
+        WebElement option = getDriver().findElementWithoutWaiting(By.cssSelector(
+            String.format("input[type='checkbox'][name='%s_0_displayQAValidation']", CONFIGURATION_CLASS)));
+        if (option.isSelected() != displayed) {
+            option.click();
+        }
+        clickSave();
+    }
+
+    /**
      * @return the hint displayed under each field of the section, in the order the fields are displayed
      */
     public List<String> getHints()

@@ -63,10 +63,10 @@ public interface ReleaseNoteResource
      * Replaces one release note: it becomes exactly what the request says, and a property the request leaves out is
      * emptied rather than kept. This is how a version is marked released on the day it ships.
      * <p>
-     * Only the release date and whether the version has been released are replaced. The product and the version
-     * locate the release note rather than being replaced, since they are what its page is named after, and neither
-     * the content nor the title nor the template is touched: they are what a release note is created with, and an
-     * administrator is free to have edited the content since.
+     * Only the release date, whether the version has been released, and whether Manual QA has validated it and on
+     * which day are replaced. The product and the version locate the release note rather than being replaced, since
+     * they are what its page is named after, and neither the content nor the title nor the template is touched: they
+     * are what a release note is created with, and an administrator is free to have edited the content since.
      * </p>
      *
      * @param wikiName the wiki holding the release note

@@ -19,7 +19,10 @@
  */
 package org.xwiki.contrib.releasenotes.test.ui.po;
 
+import java.util.List;
+
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
 import org.xwiki.test.ui.po.InlinePage;
 import org.xwiki.test.ui.po.ViewPage;
 
@@ -31,6 +34,11 @@ import org.xwiki.test.ui.po.ViewPage;
 public class ReleaseNotePage extends ViewPage
 {
     private static final By CONTENT = By.id("xwikicontent");
+
+    /**
+     * The status part of the Manual QA validation badge, displayed below the title of the release note.
+     */
+    private static final By QA_VALIDATION_STATUS = By.cssSelector(".rn-qa-badge-status");
 
     /**
      * The button submitting the form that creates the contributors list. The form is located through the entry type
@@ -48,6 +56,26 @@ public class ReleaseNotePage extends ViewPage
     {
         getDriver().findElementWithoutWaiting(ADD_CONTRIBUTORS_BUTTON).click();
         return new InlinePage();
+    }
+
+    /**
+     * @return the status the Manual QA validation badge of the note displays (e.g. "Validated"), or {@code null} when
+     *         the note displays no badge
+     */
+    public String getQAValidationStatus()
+    {
+        List<WebElement> status = getDriver().findElementsWithoutWaiting(QA_VALIDATION_STATUS);
+        return status.isEmpty() ? null : status.get(0).getText();
+    }
+
+    /**
+     * @return the tooltip of the Manual QA validation badge of the note, saying what the validation means, or
+     *         {@code null} when the note displays no badge
+     */
+    public String getQAValidationTooltip()
+    {
+        List<WebElement> status = getDriver().findElementsWithoutWaiting(QA_VALIDATION_STATUS);
+        return status.isEmpty() ? null : status.get(0).getAttribute("title");
     }
 
     /**

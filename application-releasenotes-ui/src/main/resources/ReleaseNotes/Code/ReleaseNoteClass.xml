@@ -75,6 +75,42 @@
       <validationRegExp/>
       <classType>com.xpn.xwiki.objects.classes.StringClass</classType>
     </product>
+    <qaValidation>
+      <cache>0</cache>
+      <customDisplay/>
+      <disabled>0</disabled>
+      <displayType>select</displayType>
+      <multiSelect>0</multiSelect>
+      <name>qaValidation</name>
+      <number>5</number>
+      <picker>0</picker>
+      <prettyName>Manual QA Validation</prettyName>
+      <relationalStorage>0</relationalStorage>
+      <separator> </separator>
+      <separators>|, </separators>
+      <size>1</size>
+      <sort>none</sort>
+      <unmodifiable>0</unmodifiable>
+      <validationMessage/>
+      <validationRegExp/>
+      <values>notTested=Not tested|validated=Validated|notValidated=Not validated</values>
+      <classType>com.xpn.xwiki.objects.classes.StaticListClass</classType>
+    </qaValidation>
+    <qaValidationDate>
+      <customDisplay/>
+      <dateFormat>dd/MM/yyyy</dateFormat>
+      <disabled>0</disabled>
+      <emptyIsToday>0</emptyIsToday>
+      <name>qaValidationDate</name>
+      <number>6</number>
+      <picker>1</picker>
+      <prettyName>Manual QA Validation Date</prettyName>
+      <size>20</size>
+      <unmodifiable>0</unmodifiable>
+      <validationMessage/>
+      <validationRegExp/>
+      <classType>com.xpn.xwiki.objects.classes.DateClass</classType>
+    </qaValidationDate>
     <released>
       <customDisplay/>
       <defaultValue/>

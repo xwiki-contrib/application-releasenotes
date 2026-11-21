@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.xwiki.component.internal.ContextComponentManagerProvider;
+import org.xwiki.contrib.releasenotes.QAValidation;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.properties.ConverterManager;
 import org.xwiki.properties.converter.ConversionException;
@@ -48,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @ComponentTest
 @ComponentList({ ReleaseNoteConverter.class, ContextComponentManagerProvider.class, DefaultConverterManager.class,
-    DefaultBeanManager.class, EnumConverter.class, ConvertUtilsConverter.class })
+    DefaultBeanManager.class, EnumConverter.class, ConvertUtilsConverter.class, QAValidationConverter.class })
 class ReleaseNoteConverterTest
 {
     @InjectComponentManager
@@ -73,6 +74,44 @@ class ReleaseNoteConverterTest
         assertNull(note.getDate());
         assertNull(note.getTemplate());
         assertFalse(note.isReleased());
+        assertEquals(QAValidation.NOT_TESTED, note.getQaValidation());
+    }
+
+    /**
+     * A script writes the Manual QA validation with the value a REST client reads, so that it can pass on what it
+     * read; the name of the Java constant is accepted too, and an empty form field stands for not tested.
+     */
+    @Test
+    void theManualQAValidationIsWrittenAsItsStoredValue() throws Exception
+    {
+        assertEquals(QAValidation.NOT_VALIDATED, qaValidationOf("notValidated"));
+        assertEquals(QAValidation.VALIDATED, qaValidationOf("VALIDATED"));
+        assertEquals(QAValidation.NOT_TESTED, qaValidationOf(""));
+    }
+
+    @Test
+    void aManualQAValidationThatIsNoneOfItsValuesIsReported()
+    {
+        ConversionException exception = assertThrows(ConversionException.class, () -> qaValidationOf("ok"));
+
+        assertEquals("The Manual QA validation [ok] is none of [notTested, validated, notValidated].",
+            exception.getCause().getCause().getMessage());
+    }
+
+    /**
+     * A script displaying the validation of a release note it read shows the value it would write.
+     */
+    @Test
+    void theManualQAValidationIsDisplayedAsItsStoredValue() throws Exception
+    {
+        assertEquals("notValidated", this.componentManager.<ConverterManager>getInstance(ConverterManager.class)
+            .convert(String.class, QAValidation.NOT_VALIDATED));
+        assertEquals("notValidated", QAValidation.NOT_VALIDATED.toString());
+    }
+
+    private QAValidation qaValidationOf(String value) throws Exception
+    {
+        return convert(Map.of("version", "8.3", "qaValidation", value)).getQaValidation();
     }
 
     /**

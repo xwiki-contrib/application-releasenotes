@@ -37,10 +37,10 @@
   <syntaxId>plain/1.0</syntaxId>
   <hidden>true</hidden>
   <enforceRequiredRights>true</enforceRequiredRights>
-  <content># Administration section
+  <content># Administration section. The administration looks these keys up by the id of the section, so they cannot be renamed.
 
 admin.releasenotes=Release Notes
-admin.releasenotes.description=Set the defaults used when creating a new release note.
+admin.releasenotes.description=Set the defaults used when creating a new release note, and choose what release notes display.
 
 # XClass field labels, hints and list values. XWiki resolves the label of a field as
 # "&lt;class reference&gt;_&lt;field name&gt;", the hint below it as that key suffixed with ".hint", and the label of a
@@ -69,8 +69,17 @@ ReleaseNotes.Code.ReleaseNoteClass_product=Product
 ReleaseNotes.Code.ReleaseNoteClass_version=Version
 ReleaseNotes.Code.ReleaseNoteClass_released=Is Released?
 ReleaseNotes.Code.ReleaseNoteClass_date=Release Date
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation=Manual QA Validation
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation.hint=Whether manual QA validated this version. Leave it to Not tested until the testing of the version is over.
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_notTested=Not tested
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_validated=Validated
+ReleaseNotes.Code.ReleaseNoteClass_qaValidation_notValidated=Not validated
+ReleaseNotes.Code.ReleaseNoteClass_qaValidationDate=Manual QA Validation Date
+ReleaseNotes.Code.ReleaseNoteClass_qaValidationDate.hint=The day the manual testing of this version ended.
 ReleaseNotes.Code.ContributorsClass_contributors=Contributors
 ReleaseNotes.Code.ContributorsClass_contributors.hint=One contributor name per line.
+ReleaseNotes.Code.ReleaseNotesConfigClass_displayQAValidation=Display the Manual QA Validation
+ReleaseNotes.Code.ReleaseNotesConfigClass_displayQAValidation.hint=Displays a badge below the title of each release note whose version has been manually tested, saying whether manual QA validated it.
 ReleaseNotes.Code.ReleaseNotesConfigClass_product=Default Product Name
 ReleaseNotes.Code.ReleaseNotesConfigClass_product.hint=The product name pre-filled in the release note creation form. Leave it empty when the wiki holds release notes for several products.
 ReleaseNotes.Code.ReleaseNotesConfigClass_template=Template Reference
@@ -104,6 +113,16 @@ releasenotes.releases.add.failed=The release note could not be created. Please c
 # afterwards.
 
 releasenotes.releasenote.title=Release Notes for {0} {1}
+
+# Manual QA validation badge, displayed below the title of a release note when the administration turns it on. The
+# tooltips are also given to assistive technologies, in place of the badge.
+
+releasenotes.qaValidation.label=Manual QA
+releasenotes.qaValidation.validated=Validated
+releasenotes.qaValidation.notValidated=Not validated
+releasenotes.qaValidation.validated.tooltip=Manual QA validated this version.
+releasenotes.qaValidation.validated.dateTooltip=Manual QA validated this version on {0}.
+releasenotes.qaValidation.notValidated.tooltip=Manual QA did not validate this version.
 
 # Release notes Live Data, on the application home page
 

@@ -92,6 +92,7 @@ class RequiredRightsTest extends PageTest
         EXPECTED_RIGHTS.put("Code/HTML5Video", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ReleaseNotesContributorsMacro", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/ApplicationsPanelEntry", WIKI_ADMIN);
+        EXPECTED_RIGHTS.put("Code/QAValidationBadge", WIKI_ADMIN);
         EXPECTED_RIGHTS.put("Code/Translations", WIKI_ADMIN);
         // The analyzer computes script for the migration, seeing only a Velocity macro. It stays at wiki_admin: the
         // page tests for wiki administration in its own content and then writes across the whole wiki, and script

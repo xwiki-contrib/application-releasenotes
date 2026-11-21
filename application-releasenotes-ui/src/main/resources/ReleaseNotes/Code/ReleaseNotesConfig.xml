@@ -93,6 +93,9 @@
       </template>
     </class>
     <property>
+      <displayQAValidation>0</displayQAValidation>
+    </property>
+    <property>
       <product/>
     </property>
     <property>

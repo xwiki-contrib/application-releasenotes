@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.xwiki.contrib.releasenotes.QAValidation;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.ReleaseNoteAlreadyExistsException;
 import org.xwiki.contrib.releasenotes.ReleaseNotesConfiguration;
@@ -336,6 +337,60 @@ class DefaultReleaseNoteManagerTest
     }
 
     /**
+     * Manual QA validates a version once it has been released, by replacing its release note with one that says so,
+     * and on which day.
+     */
+    @Test
+    void manualQAValidatesAReleasedVersion() throws Exception
+    {
+        Date releaseDate = new SimpleDateFormat("dd/MM/yyyy").parse("15/09/2016");
+        Date validationDate = new SimpleDateFormat("dd/MM/yyyy").parse("20/09/2016");
+        ReleaseNote note = note(PRODUCT, "8.3");
+        note.setDate(releaseDate);
+        note.setReleased(true);
+        this.manager.createReleaseNote(note);
+
+        note.setQaValidation(QAValidation.NOT_VALIDATED);
+        note.setQaValidationDate(validationDate);
+        ReleaseNote stored = this.manager.updateReleaseNote(note);
+
+        assertEquals(QAValidation.NOT_VALIDATED, stored.getQaValidation());
+        assertEquals(validationDate, stored.getQaValidationDate());
+        ReleaseNote read = this.manager.getReleaseNote(reference("8.3"));
+        assertEquals(QAValidation.NOT_VALIDATED, read.getQaValidation());
+        assertEquals(validationDate, read.getQaValidationDate());
+        assertEquals("notValidated",
+            load("8.3").getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS).getStringValue("qaValidation"),
+            "The validation is stored as the value of the static list the release note sheet displays.");
+        // Validating a version does not touch its release.
+        assertEquals(releaseDate, read.getDate());
+        assertTrue(read.isReleased());
+    }
+
+    /**
+     * A release note created before the Manual QA validation existed holds no value for it, and reads as a version
+     * Manual QA has not tested.
+     */
+    @Test
+    void aReleaseNoteHoldingNoValidationIsNotTested() throws Exception
+    {
+        this.manager.createReleaseNote(note(PRODUCT, "8.3"));
+        assertEquals(QAValidation.NOT_TESTED, this.manager.getReleaseNote(reference("8.3")).getQaValidation());
+
+        XWikiDocument document = load("8.3");
+        BaseObject object = document.getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS);
+        assertEquals("notTested", object.getStringValue("qaValidation"),
+            "A new release note must store its validation, which is what its page and the Live Data see.");
+        object.removeField("qaValidation");
+        object.removeField("qaValidationDate");
+        this.oldcore.getSpyXWiki().saveDocument(document, this.oldcore.getXWikiContext());
+
+        ReleaseNote read = this.manager.getReleaseNote(reference("8.3"));
+        assertEquals(QAValidation.NOT_TESTED, read.getQaValidation());
+        assertNull(read.getQaValidationDate());
+    }
+
+    /**
      * The properties a replacement leaves out are emptied rather than kept, and the date is emptied the way it is
      * when a release note is created: with a value, so that the Live Data listing the release notes still sees it.
      */
@@ -345,19 +400,23 @@ class DefaultReleaseNoteManagerTest
         ReleaseNote note = note(PRODUCT, "8.3");
         note.setDate(new SimpleDateFormat("dd/MM/yyyy").parse("15/09/2016"));
         note.setReleased(true);
+        note.setQaValidation(QAValidation.VALIDATED);
+        note.setQaValidationDate(new SimpleDateFormat("dd/MM/yyyy").parse("20/09/2016"));
         this.manager.createReleaseNote(note);
 
         ReleaseNote stored = this.manager.updateReleaseNote(note(PRODUCT, "8.3"));
 
         assertNull(stored.getDate());
         assertFalse(stored.isReleased());
+        assertEquals(QAValidation.NOT_TESTED, stored.getQaValidation());
+        assertNull(stored.getQaValidationDate());
         assertNotNull(load("8.3").getXObject(ReleaseNotesReferences.RELEASE_NOTE_CLASS).getField("date"),
             "The release date must be stored, so that the Live Data sees it.");
     }
 
     /**
      * The content, the title and the template are what a release note is created with, and an administrator is free
-     * to have edited that content since: a replacement is about the two properties that change over its life.
+     * to have edited that content since: a replacement is about the properties that change over its life.
      */
     @Test
     void replacingAReleaseNoteLeavesItsContentAndItsTitleAlone() throws Exception

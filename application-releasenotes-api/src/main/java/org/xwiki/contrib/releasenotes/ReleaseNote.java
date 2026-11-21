@@ -47,6 +47,10 @@ public class ReleaseNote
 
     private boolean released;
 
+    private QAValidation qaValidation = QAValidation.NOT_TESTED;
+
+    private Date qaValidationDate;
+
     private DocumentReference template;
 
     /**
@@ -118,6 +122,45 @@ public class ReleaseNote
     public void setReleased(boolean released)
     {
         this.released = released;
+    }
+
+    /**
+     * @return whether Manual QA has validated the version, which is {@link QAValidation#NOT_TESTED} until it says
+     * @since 2.9
+     */
+    public QAValidation getQaValidation()
+    {
+        return this.qaValidation;
+    }
+
+    /**
+     * @param qaValidation see {@link #getQaValidation()}; {@code null} stands for {@link QAValidation#NOT_TESTED}
+     * @since 2.9
+     */
+    @PropertyDescription("Whether manual QA has validated the version: notTested (the default), validated or "
+        + "notValidated.")
+    public void setQaValidation(QAValidation qaValidation)
+    {
+        this.qaValidation = qaValidation == null ? QAValidation.NOT_TESTED : qaValidation;
+    }
+
+    /**
+     * @return the day Manual QA finished testing the version, or {@code null} when it has not
+     * @since 2.9
+     */
+    public Date getQaValidationDate()
+    {
+        return this.qaValidationDate;
+    }
+
+    /**
+     * @param qaValidationDate see {@link #getQaValidationDate()}
+     * @since 2.9
+     */
+    @PropertyDescription("The day Manual QA finished testing the version.")
+    public void setQaValidationDate(Date qaValidationDate)
+    {
+        this.qaValidationDate = qaValidationDate;
     }
 
     /**

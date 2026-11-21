@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.xwiki.contrib.releasenotes.Audience;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.Importance;
+import org.xwiki.contrib.releasenotes.QAValidation;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ReleaseNoteRepresentation;
@@ -108,6 +109,8 @@ class RepresentationFactoryTest
         assertNull(note.getDate());
         assertNull(note.getTemplate());
         assertFalse(note.isReleased());
+        assertEquals(QAValidation.NOT_TESTED, note.getQaValidation());
+        assertNull(note.getQaValidationDate());
     }
 
     /**
@@ -151,7 +154,51 @@ class RepresentationFactoryTest
         assertEquals("8.3", representation.getVersion());
         assertEquals("2026-09-09", representation.getDate());
         assertEquals(Boolean.FALSE, representation.getReleased());
+        assertEquals("notTested", representation.getQaValidation());
+        assertNull(representation.getQaValidationDate());
         assertEquals("ReleaseNotes.Data.XWiki.8\\.3.WebHome", representation.getReference());
+    }
+
+    /**
+     * A client reads and writes the Manual QA validation with the values the release note stores, and its day the way
+     * it writes the release date.
+     */
+    @Test
+    void theManualQAValidationIsReadAndWrittenWithItsDay()
+    {
+        ReleaseNoteRepresentation posted = new ReleaseNoteRepresentation();
+        posted.setVersion("8.3");
+        posted.setQaValidation("validated");
+        posted.setQaValidationDate("2026-09-12");
+
+        ReleaseNote note = this.factory.toReleaseNote(posted);
+
+        assertEquals(QAValidation.VALIDATED, note.getQaValidation());
+        assertEquals(day("2026-09-12"), note.getQaValidationDate());
+
+        ReleaseNoteRepresentation written = this.factory.toRepresentation(note, ENTRY);
+
+        assertEquals("validated", written.getQaValidation());
+        assertEquals("2026-09-12", written.getQaValidationDate());
+    }
+
+    @Test
+    void aPostedManualQAValidationIsReadFromItsValueOrItsJavaNameWhateverItsCase()
+    {
+        assertEquals(QAValidation.NOT_VALIDATED, qaValidationOf("notValidated"));
+        assertEquals(QAValidation.NOT_VALIDATED, qaValidationOf("NOT_VALIDATED"));
+        assertEquals(QAValidation.VALIDATED, qaValidationOf("Validated"));
+        assertEquals(QAValidation.NOT_TESTED, qaValidationOf(" "));
+    }
+
+    @Test
+    void aPostedManualQAValidationThatIsNoneOfItsValuesIsRefused()
+    {
+        IllegalArgumentException exception =
+            assertThrows(IllegalArgumentException.class, () -> qaValidationOf("ok"));
+
+        assertEquals("The Manual QA validation [ok] is none of [notTested, validated, notValidated].",
+            exception.getMessage());
     }
 
     /**
@@ -325,5 +372,14 @@ class RepresentationFactoryTest
     private static Date day(String day)
     {
         return Date.from(LocalDate.parse(day).atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    private QAValidation qaValidationOf(String validation)
+    {
+        ReleaseNoteRepresentation representation = new ReleaseNoteRepresentation();
+        representation.setVersion("8.3");
+        representation.setQaValidation(validation);
+
+        return this.factory.toReleaseNote(representation).getQaValidation();
     }
 }

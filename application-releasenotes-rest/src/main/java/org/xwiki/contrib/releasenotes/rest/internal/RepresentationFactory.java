@@ -35,6 +35,7 @@ import org.xwiki.component.annotation.Component;
 import org.xwiki.contrib.releasenotes.Audience;
 import org.xwiki.contrib.releasenotes.Change;
 import org.xwiki.contrib.releasenotes.Importance;
+import org.xwiki.contrib.releasenotes.QAValidation;
 import org.xwiki.contrib.releasenotes.ReleaseNote;
 import org.xwiki.contrib.releasenotes.rest.model.ChangeRepresentation;
 import org.xwiki.contrib.releasenotes.rest.model.ReleaseNoteRepresentation;
@@ -69,7 +70,8 @@ public class RepresentationFactory
     /**
      * @param representation the release note a client posted
      * @return that release note, as the application models it
-     * @throws IllegalArgumentException when the date is not a day, or a day followed by a time
+     * @throws IllegalArgumentException when a date is not a day, or a day followed by a time, or the Manual QA
+     *             validation is not one of the values it accepts
      */
     public ReleaseNote toReleaseNote(ReleaseNoteRepresentation representation)
     {
@@ -78,6 +80,8 @@ public class RepresentationFactory
         note.setVersion(representation.getVersion());
         note.setDate(toDate(representation.getDate()));
         note.setReleased(Boolean.TRUE.equals(representation.getReleased()));
+        note.setQaValidation(toQAValidation(representation.getQaValidation()));
+        note.setQaValidationDate(toDate(representation.getQaValidationDate()));
 
         if (StringUtils.isNotBlank(representation.getTemplate())) {
             note.setTemplate(this.documentReferenceResolver.resolve(representation.getTemplate()));
@@ -92,7 +96,8 @@ public class RepresentationFactory
      *            the posted release note says
      * @param version the version of that release note, in its long form
      * @return that release note, as the application models it
-     * @throws IllegalArgumentException when the date is not a day, or a day followed by a time
+     * @throws IllegalArgumentException when a date is not a day, or a day followed by a time, or the Manual QA
+     *             validation is not one of the values it accepts
      */
     public ReleaseNote toReleaseNote(ReleaseNoteRepresentation representation, String product, String version)
     {
@@ -116,6 +121,8 @@ public class RepresentationFactory
         representation.setVersion(note.getVersion());
         representation.setDate(toDayString(note.getDate()));
         representation.setReleased(note.isReleased());
+        representation.setQaValidation(note.getQaValidation().getStoredValue());
+        representation.setQaValidationDate(toDayString(note.getQaValidationDate()));
         representation.setReference(serialize(reference));
 
         return representation;
@@ -228,6 +235,22 @@ public class RepresentationFactory
         if (resolved == null) {
             throw new IllegalArgumentException(String.format("The audience [%s] is none of [%s].", audience,
                 names(Stream.of(Audience.values()).map(Audience::getStoredValue))));
+        }
+
+        return resolved;
+    }
+
+    private QAValidation toQAValidation(String validation)
+    {
+        if (StringUtils.isBlank(validation)) {
+            return QAValidation.NOT_TESTED;
+        }
+
+        QAValidation resolved = QAValidation.fromValue(validation);
+
+        if (resolved == null) {
+            throw new IllegalArgumentException(String.format("The Manual QA validation [%s] is none of [%s].",
+                validation, names(Stream.of(QAValidation.values()).map(QAValidation::getStoredValue))));
         }
 
         return resolved;

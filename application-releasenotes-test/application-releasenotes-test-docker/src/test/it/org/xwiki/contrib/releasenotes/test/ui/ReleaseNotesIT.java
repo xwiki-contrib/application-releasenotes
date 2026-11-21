@@ -51,6 +51,7 @@ import org.xwiki.test.ui.po.ViewPage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -177,7 +178,7 @@ class ReleaseNotesIT
 
     /**
      * Checks that the configuration is reachable from the wiki Administration (thanks to the ConfigurableClass
-     * xobject), with its two fields, their hints and the right administration category.
+     * xobject), with its three fields, their hints and the right administration category.
      */
     @Test
     @Order(2)
@@ -191,14 +192,18 @@ class ReleaseNotesIT
             "No product name must be shipped: the administrator has to choose one.");
         assertEquals("ReleaseNotes.Code.ReleaseNoteTemplate", section.getTemplate(),
             "Expected the default template reference to be displayed.");
+        assertFalse(section.isQAValidationDisplayed(),
+            "The Manual QA validation badge must be off until the administrator turns it on.");
 
-        // Both fields explain what they are for.
+        // Every field explains what it is for.
         List<String> hints = section.getHints();
-        assertEquals(2, hints.size(), "Expected a hint under each of the two configuration fields, got: " + hints);
+        assertEquals(3, hints.size(), "Expected a hint under each of the three configuration fields, got: " + hints);
         assertTrue(hints.stream().anyMatch(hint -> hint.startsWith("The product name pre-filled")),
             "Missing the hint for the product field, got: " + hints);
         assertTrue(hints.stream().anyMatch(hint -> hint.startsWith("The page whose title and content are copied")),
             "Missing the hint for the template field, got: " + hints);
+        assertTrue(hints.stream().anyMatch(hint -> hint.startsWith("Displays a badge below the title")),
+            "Missing the hint for the Manual QA validation option, got: " + hints);
 
         // The application is not bundled with XWiki Standard and thus its section belongs to the "Other" category.
         assertTrue(section.isListedInCategory("other"),
@@ -755,6 +760,44 @@ class ReleaseNotesIT
             // The rule granted above allows and is therefore exclusive: left behind, it would deny the edit right on
             // the release notes to everybody else.
             setup.rest().delete(dataPreferences);
+        }
+    }
+
+    /**
+     * Checks that a release note whose version Manual QA validated displays the badge below its title once the
+     * administrator turns it on in the Release Notes administration, and only then. This is what proves the UI
+     * extension displaying it is registered, which a page test cannot.
+     */
+    @Test
+    @Order(12)
+    void manualQAValidationBadgeIsDisplayedWhenTurnedOn(TestUtils setup) throws Exception
+    {
+        setup.loginAsSuperAdmin();
+
+        DocumentReference releaseNote =
+            new DocumentReference("xwiki", List.of("ReleaseNotes", "Data", "QAProduct", "4.0"), "WebHome");
+        setup.rest().delete(releaseNote);
+        setup.createPage(releaseNote, "", "RN 4.0");
+        setup.addObject(releaseNote, "ReleaseNotes.Code.ReleaseNoteClass", "product", "QAProduct", "version",
+            "4.0", "released", "1", "date", "", "qaValidation", "validated", "qaValidationDate", "20/11/2026");
+
+        try {
+            setup.gotoPage(releaseNote);
+            assertNull(new ReleaseNotePage().getQAValidationStatus(),
+                "No badge must be displayed while the administrator has not turned it on.");
+
+            ReleaseNotesAdministrationSectionPage.gotoSection().setQAValidationDisplayed(true);
+
+            setup.gotoPage(releaseNote);
+            ReleaseNotePage validatedPage = new ReleaseNotePage();
+            assertEquals("Validated", validatedPage.getQAValidationStatus());
+            String tooltip = validatedPage.getQAValidationTooltip();
+            assertTrue(tooltip.contains("Nov 20, 2026"),
+                "The tooltip of the badge must give the day of the validation, got: " + tooltip);
+        } finally {
+            // The option is wiki-wide: left on, it would display badges in the other tests of this wiki.
+            ReleaseNotesAdministrationSectionPage.gotoSection().setQAValidationDisplayed(false);
+            setup.rest().delete(releaseNote);
         }
     }
 

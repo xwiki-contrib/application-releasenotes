@@ -38,6 +38,10 @@ public class ReleaseNoteRepresentation
 
     private Boolean released;
 
+    private String qaValidation;
+
+    private String qaValidationDate;
+
     private String template;
 
     private String reference;
@@ -108,6 +112,45 @@ public class ReleaseNoteRepresentation
     public void setReleased(Boolean released)
     {
         this.released = released;
+    }
+
+    /**
+     * @return whether Manual QA has validated the version: {@code notTested}, {@code validated} or
+     *         {@code notValidated}, or {@code null} on a posted release note that does not say, which stands for
+     *         {@code notTested}
+     * @since 2.9
+     */
+    public String getQaValidation()
+    {
+        return this.qaValidation;
+    }
+
+    /**
+     * @param qaValidation see {@link #getQaValidation()}
+     * @since 2.9
+     */
+    public void setQaValidation(String qaValidation)
+    {
+        this.qaValidation = qaValidation;
+    }
+
+    /**
+     * @return the day Manual QA finished testing the version, written {@code yyyy-MM-dd}, or {@code null} when it has
+     *         not
+     * @since 2.9
+     */
+    public String getQaValidationDate()
+    {
+        return this.qaValidationDate;
+    }
+
+    /**
+     * @param qaValidationDate see {@link #getQaValidationDate()}
+     * @since 2.9
+     */
+    public void setQaValidationDate(String qaValidationDate)
+    {
+        this.qaValidationDate = qaValidationDate;
     }
 
     /**
